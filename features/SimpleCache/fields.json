@@ -1,0 +1,11 @@
+{
+  "globalOptions": [
+    {
+      "name": "longterm_cache",
+      "label": "Long-term Cache",
+      "type": "number",
+      "default_value": 1,
+      "instructions": "Increment this number to invalidate the long-term cache."
+    }
+  ]
+}
