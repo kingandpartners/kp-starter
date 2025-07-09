@@ -6,6 +6,7 @@ use function NuxtSsr\Redis\redis_get;
 use function NuxtSsr\Redis\redis_unscoped_get;
 use function NuxtSsr\simple_cache_fetch;
 use function NuxtSsr\longterm_cache_fetch;
+use function UrlModification\modify_url;
 
 class ApiController {
 
@@ -219,7 +220,7 @@ class ApiController {
     $sites = get_sites();
     $response = array();
     foreach ($sites as $site) {
-      $key = $site->home;
+      $key = modify_url($site->home);
       $response[$key] = $site;
     }
     return $response;
