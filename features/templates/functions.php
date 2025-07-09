@@ -18,8 +18,10 @@ add_filter(
   'theme_templates',
   function ( $post_templates ) {
     $project_root = getenv('PROJECT_ROOT');
-    $template_dir = $project_root . '/src/templates/';
-    $templates    = preg_grep('~^Template.*~', scandir($template_dir));
+    $theme_dir     = basename(get_template_directory());
+    $child_theme   = get_option('options_globalOptionsFrontendSite_site');
+    if ($child_theme) $theme_dir = "$theme_dir,$child_theme";
+    $templates = glob("$project_root/src/themes/{" . $theme_dir . ",shared}/templates/Template*", GLOB_BRACE);
     foreach ( $templates as $template) {
       $template = str_replace('Template', '', $template);
       preg_match_all('/((?:^|[A-Z])[a-z]+)/', $template, $words);

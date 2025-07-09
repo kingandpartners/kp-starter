@@ -1,0 +1,11 @@
+{
+  "globalOptions": [
+    {
+      "name": "site",
+      "label": "Site",
+      "type": "text",
+      "default_value": "bhc",
+      "instructions": "This setting adjusts which theme is used for the site."
+    }
+  ]
+}
