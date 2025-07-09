@@ -29,6 +29,7 @@ add_filter(
   function( $url, $path, $scheme, $blog_id ) {
     if (
       'wp-json' === $path ||
+      empty($path) ||
       (
         $_SERVER['REQUEST_METHOD'] === 'POST' &&
         strpos( $_SERVER['REQUEST_URI'], 'page=wpcf' ) !== false
