@@ -114,7 +114,7 @@ class Site {
 }
 
 add_action('after_setup_theme', __NAMESPACE__ . '\init');
-add_action('after_setup_theme', __NAMESPACE__ . '\load', 100);
+add_action('acf/init', __NAMESPACE__ . '\load');
 add_action('init', __NAMESPACE__ . '\wp_init');
 
 function wp_init() {
