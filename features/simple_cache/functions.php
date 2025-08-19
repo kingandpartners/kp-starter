@@ -119,8 +119,8 @@ function simple_cache_key($key) {
 }
 
 add_action('acf/options_page/save', function($post_id, $menu_slug) {
-  if ('globalOptionsFeatureSimpleCache' !== $menu_slug) return;
-  $key = get_field('globalOptionsFeatureSimpleCache_longterm_cache', 'options') ?? '1';
+  if ('globalOptionsComponentSimpleCache' !== $menu_slug) return;
+  $key = get_field('globalOptionsComponentSimpleCache_longterm_cache', 'options') ?? '1';
   $key = (int) $key;
   redis_unscoped_store('longterm_cache_key', $key);
   // store env info

@@ -79,7 +79,7 @@ class Site {
   public static function register() {
     $project_root  = getenv('PROJECT_ROOT');
     $theme_dir     = basename(get_template_directory());
-    $child_theme   = get_option('options_globalOptionsFrontendSite_site');
+    $child_theme   = get_option('options_globalOptionsComponentSite_site');
     if ($child_theme) $theme_dir = "$theme_dir,$child_theme";
     $project_files = glob("$project_root/{cms,src/themes}/{" . $theme_dir . ",shared}/{*,*/*,*/*/*,*/*/*/*}/{functions,fields,taxonomies,config}.{php,json}", GLOB_BRACE);
     $features_dir  = __DIR__ . '/features';
@@ -98,8 +98,8 @@ class Site {
       preg_match('/(\/shared\/)/', $file, $matches);
       $priority = (preg_match('/(\/shared\/)/', $file, $matches)) ? 'shared' : 'theme';
 
-      // is it located in cms or frontend?
-      $location = (preg_match('/(\/cms\/)/', $file, $matches)) ? 'cms' : 'frontend';
+      // is it located in cms or component?
+      $location = (preg_match('/(\/cms\/)/', $file, $matches)) ? 'cms' : 'component';
 
       $result = array(
         'file'     => $file,

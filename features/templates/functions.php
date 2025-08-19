@@ -19,7 +19,7 @@ add_filter(
   function ( $post_templates ) {
     $project_root = getenv('PROJECT_ROOT');
     $theme_dir     = basename(get_template_directory());
-    $child_theme   = get_option('options_globalOptionsFrontendSite_site');
+    $child_theme   = get_option('options_globalOptionsComponentSite_site');
     if ($child_theme) $theme_dir = "$theme_dir,$child_theme";
     $templates = glob("$project_root/src/themes/{" . $theme_dir . ",shared}/templates/Template*", GLOB_BRACE);
     foreach ( $templates as $template) {
