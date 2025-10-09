@@ -30,6 +30,7 @@ add_filter(
     if (
       'wp-json' === $path ||
       empty($path) ||
+      strpos($_SERVER['REQUEST_URI'], '.xml') !== false ||
       (
         $_SERVER['REQUEST_METHOD'] === 'POST' &&
         strpos( $_SERVER['REQUEST_URI'], 'page=wpcf' ) !== false
