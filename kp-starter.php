@@ -14,6 +14,8 @@
 
 use ACFComposer\ACFComposer;
 
+require_once __DIR__ . '/url_modification.php';
+
 class Site {
   public static $config = array(
     'features' => [

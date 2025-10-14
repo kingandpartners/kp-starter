@@ -12,13 +12,11 @@ function modify_url( $url ) {
     return $url;
   }
 
-  // keep url admin url for main sitemap index
-  if (strpos($_SERVER['REQUEST_URI'], '/sitemap_index.xml') !== false) return $url;
-
   foreach ( SITE_URLS as $find => $replace ) {
     $url = str_replace( $find, $replace, $url );
   }
   return $url;
+
 }
 
 /**
@@ -29,7 +27,6 @@ add_filter(
   function( $url, $path, $scheme, $blog_id ) {
     if (
       'wp-json' === $path ||
-      empty($path) ||
       strpos($_SERVER['REQUEST_URI'], '.xml') !== false ||
       (
         $_SERVER['REQUEST_METHOD'] === 'POST' &&
@@ -41,3 +38,12 @@ add_filter(
   10,
   4
 );
+
+// Modify the URL for the XSL stylesheet in the sitemaps
+// since home_url is bypassed for .xml files in the filter above.
+add_filter('clean_url', function($good_protocol_url, $original_url, $_context) {
+  if (strpos($original_url, '.xsl') === false) {
+    return $good_protocol_url;
+  }
+  return modify_url($good_protocol_url);
+}, 10, 3);
