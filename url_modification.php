@@ -27,6 +27,7 @@ add_filter(
   function( $url, $path, $scheme, $blog_id ) {
     if (
       'wp-json' === $path ||
+      strpos($path, 'newbloguser') !== false ||
       strpos($_SERVER['REQUEST_URI'], '.xml') !== false ||
       empty($path) ||
       (
