@@ -24,7 +24,9 @@ function update_redirect_files( $old_value, $value, $option_name ) {
       $reload_cmd = "apachectl graceful";
     }
     $file = WPSEO_Redirect_File_Util::get_file_path();
-    $cmd  = 'sed -i -e \'s#" "/#" "' . getenv('FRONTEND_URL') . '/#g\' ' . $file . ' && ';
+    $cmd  = 'sed -i -e \'s#" "/#" "' . getenv('FRONTEND_URL') . '/#g\' ' . $file;
+    $cmd  = apply_filters('kp_seo_redirects_command', $cmd, $file);
+    $cmd .= ' && ';
     $cmd .= $reload_cmd;
     $cmd  = "( sleep 5 ; $cmd ) > /dev/null &";
     system($cmd);
