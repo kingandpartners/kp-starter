@@ -24,6 +24,34 @@ add_action(
 // remove the ACF admin menu item
 add_filter('acf/settings/show_admin', '__return_false');
 
+// Ensure admin page titles are always strings so WP core strip_tags() never receives null.
+add_action(
+  'current_screen',
+  function( $screen ) {
+    global $title;
+
+    if ( null !== $title && '' !== $title ) {
+      return;
+    }
+
+    $fallback = '';
+    if ( is_object( $screen ) && ! empty( $screen->title ) ) {
+      $fallback = (string) $screen->title;
+    }
+
+    if ( '' === $fallback ) {
+      $fallback = (string) get_bloginfo( 'name' );
+    }
+
+    if ( '' === $fallback ) {
+      $fallback = 'WordPress';
+    }
+
+    $title = $fallback;
+  },
+  0
+);
+
 add_action(
   'admin_menu',
   function() {
