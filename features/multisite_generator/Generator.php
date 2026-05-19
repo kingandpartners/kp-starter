@@ -8,6 +8,7 @@ class Generator
   const GENERATED_DEPLOY_COMPOSE = 'deploy/multisite.generated.yml';
   const GENERATED_LOCAL_COMPOSE = 'docker-compose.generated.yml';
   const GENERATED_LOCAL_ARM_COMPOSE = 'docker-compose.generated.arm.yml';
+  const GENERATED_SITE_URLS = 'wordpress/config/generated-site-urls.php';
 
   public static function manifest_command()
   {
@@ -24,7 +25,7 @@ class Generator
     self::write_file(self::project_path(self::GENERATED_LOCAL_COMPOSE), self::render_local_compose($manifest));
     self::write_file(self::project_path(self::GENERATED_LOCAL_ARM_COMPOSE), self::render_local_arm_compose($manifest));
     self::write_apache_vhosts($manifest);
-
+    self::write_site_urls_php($manifest);
     self::cli('success', sprintf(
       'Generated %s, %s, %s, and %d Apache vhosts.',
       self::GENERATED_DEPLOY_COMPOSE,
@@ -32,6 +33,40 @@ class Generator
       self::GENERATED_LOCAL_ARM_COMPOSE,
       count($manifest['sites'])
     ));
+  }
+
+  /**
+   * Write the SITE_URLS PHP mapping file for config inclusion.
+   */
+  protected static function write_site_urls_php($manifest)
+  {
+    $lines = [];
+    $lines[] = '<?php';
+    $lines[] = '';
+    $lines[] = 'use Roots\\WPConfig\\Config;';
+    $lines[] = '';
+    $lines[] = 'Config::define(';
+    $lines[] = "  'SITE_URLS',";
+    $lines[] = '  array(';
+    foreach ($manifest['sites'] as $site) {
+      // Map admin domains + path to frontend domain for each environment
+      $site_path = $site['site_path'] ? '/' . $site['site_path'] : '';
+      $mappings = [
+        getenv('ADMIN_SERVERNAME') . $site_path => $site['local_domain'],
+        getenv('BETA_ADMIN_DOMAIN') . $site_path => $site['beta_domain'],
+        getenv('PROD_ADMIN_DOMAIN') . $site_path => $site['prod_domain'],
+      ];
+      foreach ($mappings as $admin => $frontend) {
+        if ($admin && $frontend) {
+          $lines[] = sprintf("    '%s' => '%s',", $admin, $frontend);
+        }
+      }
+    }
+    $lines[] = '  )';
+    $lines[] = ');';
+    $lines[] = '';
+    $path = self::project_path(self::GENERATED_SITE_URLS);
+    self::write_file($path, implode(PHP_EOL, $lines));
   }
 
   public static function manifest()
