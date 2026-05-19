@@ -6,6 +6,12 @@
       "type": "text",
       "default_value": "bhc",
       "instructions": "This setting adjusts which theme is used for the site."
+    },
+    {
+      "name": "domain",
+      "label": "Domain",
+      "type": "text",
+      "instructions": "Enter the primary domain for this site (e.g., example.com)."
     }
   ]
 }

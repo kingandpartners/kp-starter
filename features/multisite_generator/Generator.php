@@ -63,16 +63,12 @@ class Generator
     $site_home = get_home_url((int) $site->blog_id);
     $home_host = (string) parse_url($site_home, PHP_URL_HOST);
     $home_scheme = (string) parse_url($site_home, PHP_URL_SCHEME);
-    $prod_domain = $config['prod_domain'] ?? $home_host;
-    $local_domain = $config['local_domain'] ?? $home_host;
+    // Use the new ACF field for domain, fallback to home_host
+    $domain = get_option('options_globalOptionsComponentSite_domain') ?: $home_host;
+    $prod_domain = $config['prod_domain'] ?? $domain;
+    $local_domain = $config['local_domain'] ?? $domain;
     $beta_domain = $config['beta_domain'] ?? '';
-    $robots_file = $config['robots_file'] ?? sprintf('%s.txt', $current_site);
     $admin_path = $config['admin_path'] ?? ($site_path ? $site_path . '/' : '');
-    $admin_hosts = [
-      'local' => $config['local_admin_domain'] ?? getenv('ADMIN_SERVERNAME') ?: '',
-      'beta' => $config['beta_admin_domain'] ?? getenv('BETA_ADMIN_DOMAIN') ?: '',
-      'production' => $config['prod_admin_domain'] ?? getenv('PROD_ADMIN_DOMAIN') ?: getenv('ADMIN_SERVERNAME') ?: '',
-    ];
 
     restore_current_blog();
 
@@ -93,9 +89,7 @@ class Generator
         $beta_domain,
         $prod_domain,
       ]))),
-      'robots_file' => $robots_file,
       'yoast_include' => self::yoast_redirect_include((int) $site->blog_id),
-      'admin_hosts' => $admin_hosts,
       'image_name' => sprintf('ghcr.io/${REPO_ORG}/${REPO_NAME}/%s_${WP_ENV}:latest', $service_name),
     ];
   }
