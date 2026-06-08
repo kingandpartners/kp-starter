@@ -53,6 +53,6 @@
     "wpackagist-plugin/post-smtp": "^3.1.4",
     "wpackagist-plugin/wordpress-importer": "^0.9",
     "wpengine/advanced-custom-fields-pro": "^6.4.2",
-    "yoast/wordpress-seo-premium": "^25.3"
+    "yoast/wordpress-seo-premium": "^27.7"
   }
 }
