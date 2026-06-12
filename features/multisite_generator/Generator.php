@@ -290,7 +290,9 @@ class Generator
   {
     $lines = [];
     $lines[] = sprintf('  %s:', $site['service_name']);
-    $lines[] = sprintf('    image: "%s"', $site['image_name']);
+    if (!$local) {
+      $lines[] = sprintf('    image: "%s"', $site['image_name']);
+    }
     $lines[] = '    extends:';
     $lines[] = sprintf('      file: %s', $file);
     $lines[] = sprintf('      service: %s', $service);
