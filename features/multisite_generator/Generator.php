@@ -113,7 +113,12 @@ class Generator
     // Use the new ACF field for domain, fallback to home_host
     $domain = get_option('options_globalOptionsComponentSite_domain') ?: $home_host;
     $prod_domain = $config['prod_domain'] ?? $domain;
-    $local_domain = $config['local_domain'] ?? $domain;
+    // Prefer the explicit FRONTEND_DOMAIN env var, then strip the first subdomain from
+    // ADMIN_SERVERNAME (e.g. admin.kp-boilerplate.test → kp-boilerplate.test) as a safety net.
+    $admin_servername = (string) getenv('ADMIN_SERVERNAME');
+    $local_domain_fallback = getenv('FRONTEND_DOMAIN')
+      ?: ($admin_servername ? (string) preg_replace('/^[^.]+\./', '', $admin_servername) : $domain);
+    $local_domain = $config['local_domain'] ?? $local_domain_fallback;
     $beta_domain = $config['beta_domain'] ?? '';
     $admin_path = $config['admin_path'] ?? ($site_path ? $site_path . '/' : '');
 
@@ -341,13 +346,9 @@ class Generator
 
   protected static function render_apache_vhost($site)
   {
-    $aliases = array_filter([$site['local_domain'], $site['beta_domain']]);
     $lines = [];
     $lines[] = '<VirtualHost *:80>';
-    $lines[] = sprintf('  ServerName %s', $site['prod_domain']);
-    foreach ($aliases as $alias) {
-      $lines[] = sprintf('  ServerAlias %s', $alias);
-    }
+    $lines[] = sprintf('  ServerName %s', $site['local_domain']);
     $lines[] = '';
     $lines[] = '  DocumentRoot ${APACHE_DOCUMENT_ROOT}';
     $lines[] = '  Protocols h2 http/1.1';
