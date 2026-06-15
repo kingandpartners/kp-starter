@@ -21,16 +21,28 @@ class Generator
     self::ensure_multisite_enabled();
 
     $manifest = self::manifest();
-    self::write_file(self::project_path(self::GENERATED_DEPLOY_COMPOSE), self::render_deploy_compose($manifest));
+    $is_local = 'development' === getenv('WP_ENV');
+
+    $has_arm = file_exists(self::project_path('docker-compose.arm.yml'));
+
+    if (!$is_local) {
+      self::write_file(self::project_path(self::GENERATED_DEPLOY_COMPOSE), self::render_deploy_compose($manifest));
+    }
     self::write_file(self::project_path(self::GENERATED_LOCAL_COMPOSE), self::render_local_compose($manifest));
-    self::write_file(self::project_path(self::GENERATED_LOCAL_ARM_COMPOSE), self::render_local_arm_compose($manifest));
+    if ($has_arm) {
+      self::write_file(self::project_path(self::GENERATED_LOCAL_ARM_COMPOSE), self::render_local_arm_compose($manifest));
+    }
     self::write_apache_vhosts($manifest);
     self::write_site_urls_php($manifest);
+
+    $generated = $is_local ? [] : [self::GENERATED_DEPLOY_COMPOSE];
+    $generated[] = self::GENERATED_LOCAL_COMPOSE;
+    if ($has_arm) {
+      $generated[] = self::GENERATED_LOCAL_ARM_COMPOSE;
+    }
     self::cli('success', sprintf(
-      'Generated %s, %s, %s, and %d Apache vhosts.',
-      self::GENERATED_DEPLOY_COMPOSE,
-      self::GENERATED_LOCAL_COMPOSE,
-      self::GENERATED_LOCAL_ARM_COMPOSE,
+      'Generated %s, and %d Apache vhosts.',
+      implode(', ', $generated),
       count($manifest['sites'])
     ));
   }
