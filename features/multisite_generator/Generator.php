@@ -142,6 +142,7 @@ class Generator
         $prod_domain,
       ]))),
       'yoast_include' => self::yoast_redirect_include((int) $site->blog_id),
+      'robots_file' => sanitize_file_name($current_site) . '.txt',
       'image_name' => sprintf('ghcr.io/${REPO_ORG}/${REPO_NAME}/%s_${WP_ENV}:latest', $service_name),
     ];
   }
