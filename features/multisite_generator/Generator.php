@@ -113,11 +113,13 @@ class Generator
     // Use the new ACF field for domain, fallback to home_host
     $domain = get_option('options_globalOptionsComponentSite_domain') ?: $home_host;
     $prod_domain = $config['prod_domain'] ?? $domain;
-    // Prefer the explicit FRONTEND_DOMAIN env var, then strip the first subdomain from
-    // ADMIN_SERVERNAME (e.g. admin.kp-boilerplate.test → kp-boilerplate.test) as a safety net.
+    // Use the ACF domain field (options_globalOptionsComponentSite_domain) as the
+    // primary local domain source so each subsite gets its own domain. Falls back
+    // to the site's home URL host, then FRONTEND_DOMAIN, then ADMIN_SERVERNAME.
     $admin_servername = (string) getenv('ADMIN_SERVERNAME');
-    $local_domain_fallback = getenv('FRONTEND_DOMAIN')
-      ?: ($admin_servername ? (string) preg_replace('/^[^.]+\./', '', $admin_servername) : $domain);
+    $local_domain_fallback = $domain
+      ?: getenv('FRONTEND_DOMAIN')
+      ?: ($admin_servername ? (string) preg_replace('/^[^.]+\./', '', $admin_servername) : '');
     $local_domain = $config['local_domain'] ?? $local_domain_fallback;
     $beta_domain = $config['beta_domain'] ?? '';
     $admin_path = $config['admin_path'] ?? ($site_path ? $site_path . '/' : '');
