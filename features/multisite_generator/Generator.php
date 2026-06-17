@@ -61,16 +61,17 @@ class Generator
     $lines[] = "  'SITE_URLS',";
     $lines[] = '  array(';
     foreach ($manifest['sites'] as $site) {
-      // Map admin domains + path to frontend domain for each environment
+      // Map admin domains + path to frontend domain for each environment.
+      // Build each entry only when the host env var is non-empty so that an
+      // empty var + site_path doesn't produce a path-only key like '/kp-multi'.
       $site_path = $site['site_path'] ? '/' . $site['site_path'] : '';
-      $mappings = [
-        getenv('ADMIN_SERVERNAME') . $site_path => $site['local_domain'],
-        getenv('BETA_ADMIN_DOMAIN') . $site_path => $site['beta_domain'],
-        getenv('PROD_ADMIN_DOMAIN') . $site_path => $site['prod_domain'],
-      ];
-      foreach ($mappings as $admin => $frontend) {
-        if ($admin && $frontend) {
-          $lines[] = sprintf("    '%s' => '%s',", $admin, $frontend);
+      foreach ([
+        getenv('ADMIN_SERVERNAME') => $site['local_domain'],
+        getenv('BETA_ADMIN_DOMAIN') => $site['beta_domain'],
+        getenv('PROD_ADMIN_DOMAIN') => $site['prod_domain'],
+      ] as $host => $frontend) {
+        if ($host && $frontend) {
+          $lines[] = sprintf("    '%s' => '%s',", $host . $site_path, $frontend);
         }
       }
     }
@@ -110,14 +111,15 @@ class Generator
     $site_home = get_home_url((int) $site->blog_id);
     $home_host = (string) parse_url($site_home, PHP_URL_HOST);
     $home_scheme = (string) parse_url($site_home, PHP_URL_SCHEME);
-    // Use the new ACF field for domain, fallback to home_host
-    $domain = get_option('options_globalOptionsComponentSite_domain') ?: $home_host;
-    $prod_domain = $config['prod_domain'] ?? $domain;
-    // Use the ACF domain field (options_globalOptionsComponentSite_domain) as the
-    // primary local domain source so each subsite gets its own domain. Falls back
-    // to the site's home URL host, then FRONTEND_DOMAIN, then ADMIN_SERVERNAME.
+    // Read the ACF domain field directly — do not fall back to $home_host, which
+    // in this setup is the admin URL, not the frontend domain.
+    $acf_domain = (string) get_option('options_globalOptionsComponentSite_domain');
+    $domain = $acf_domain ?: $home_host;
+    $prod_domain = $config['prod_domain'] ?? ($acf_domain ?: '');
+    // For local_domain: prefer the ACF field, then FRONTEND_DOMAIN, then derive
+    // from ADMIN_SERVERNAME. Never fall back to $home_host (admin URL).
     $admin_servername = (string) getenv('ADMIN_SERVERNAME');
-    $local_domain_fallback = $domain
+    $local_domain_fallback = $acf_domain
       ?: getenv('FRONTEND_DOMAIN')
       ?: ($admin_servername ? (string) preg_replace('/^[^.]+\./', '', $admin_servername) : '');
     $local_domain = $config['local_domain'] ?? $local_domain_fallback;
