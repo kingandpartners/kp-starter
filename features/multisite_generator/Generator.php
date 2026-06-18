@@ -458,7 +458,7 @@ class Generator
       return str_replace('-', '_', $path);
     }
 
-    return $index === 0 ? 'main' : sprintf('site_%d', $site->blog_id);
+    return $index === 0 ? 'default' : sprintf('site_%d', $site->blog_id);
   }
 
   protected static function yoast_redirect_include($blog_id)
