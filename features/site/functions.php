@@ -56,8 +56,11 @@ if (is_multisite()) {
     flush_rewrite_rules(false);
 
     $post = get_post(2);
-    if ($post && function_exists('NuxtPress\\set_url_post_meta')) {
-      \NuxtPress\set_url_post_meta(2, $post, true);
+    if ($post) {
+      // Trigger a full wp_update_post so wp_insert_post fires after the
+      // permalink structure is set — this sets _url meta and bumps the cache,
+      // making the homepage visible in the NuxtPress API immediately.
+      wp_update_post(['ID' => 2]);
     }
 
     // Scaffold theme directory from createCustomTheme (mirrors init.mjs) if site name provided.
