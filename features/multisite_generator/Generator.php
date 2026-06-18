@@ -350,6 +350,7 @@ class Generator
       $lines[] = sprintf('      FRONTEND_DOMAIN: %s', $site['local_domain']);
       $lines[] = sprintf('      FRONTEND_URL: %s://%s', $scheme, $site['local_domain']);
     }
+    $lines[] = sprintf('      HMR_PORT: %d', $site['port']);
     $lines[] = '    networks:';
     $lines[] = $local ? '      default:' : '      nuxt_ssr:';
     return $lines;

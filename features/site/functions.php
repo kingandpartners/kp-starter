@@ -103,5 +103,16 @@ if (!function_exists('kp_scaffold_theme')) {
       $theme_dir . '/assets/scss/base/index.scss',
       "// {$theme_name} theme styles\n// Add theme-specific styles here\n"
     );
+
+    // Per-theme layout file in src/layouts/
+    $layouts_dir  = dirname($theme_dir) . '/../layouts';
+    $layout_file  = $layouts_dir . '/' . $theme_name . '.vue';
+    if (!file_exists($layout_file)) {
+      wp_mkdir_p($layouts_dir);
+      file_put_contents(
+        $layout_file,
+        "<template>\n  <div class=\"{$theme_name}\">\n    <SkipToMainContent />\n\n    <main id=\"content\">\n      <NuxtPage />\n    </main>\n\n  </div>\n</template>\n"
+      );
+    }
   }
 }
