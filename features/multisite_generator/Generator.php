@@ -353,6 +353,11 @@ class Generator
     }
 
     foreach ($manifest['sites'] as $site) {
+      // Skip the primary site — nuxt.conf already handles it and proxies to
+      // NUXT_HOST (nuxt_1). Generating site-1.conf would duplicate that vhost.
+      if ((int) $site['blog_id'] === 1) {
+        continue;
+      }
       $path = $directory . '/site-' . $site['blog_id'] . '.conf';
       self::write_file($path, self::render_apache_vhost($site));
     }

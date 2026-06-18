@@ -29,8 +29,8 @@ if (is_multisite()) {
   });
 
   // When a new site is created: save the custom fields and apply defaults.
-  add_action('wpmu_new_blog', function ($blog_id) {
-    switch_to_blog((int) $blog_id);
+  add_action('wp_initialize_site', function (WP_Site $new_site, array $args) {
+    switch_to_blog((int) $new_site->blog_id);
 
     // Save globalOptionsComponentSite fields if submitted from the Add New Site form.
     if (!empty($_POST['kp_site_name'])) {
@@ -58,5 +58,5 @@ if (is_multisite()) {
     }
 
     restore_current_blog();
-  }, 10, 1);
+  }, 10, 2);
 }
