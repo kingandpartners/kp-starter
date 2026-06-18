@@ -345,6 +345,11 @@ class Generator
     $lines[] = sprintf('      - %d:%d', $site['port'], $site['port']);
     $lines[] = '    environment:';
     $lines[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
+    if ($site['local_domain']) {
+      $scheme = $site['home_scheme'] ?: 'http';
+      $lines[] = sprintf('      FRONTEND_DOMAIN: %s', $site['local_domain']);
+      $lines[] = sprintf('      FRONTEND_URL: %s://%s', $scheme, $site['local_domain']);
+    }
     $lines[] = '    networks:';
     $lines[] = $local ? '      default:' : '      nuxt_ssr:';
     return $lines;

@@ -52,11 +52,56 @@ if (is_multisite()) {
     update_option('show_on_front', 'page');
     update_option('page_on_front', 2);
 
+    update_option('permalink_structure', '/%postname%/');
+    flush_rewrite_rules(false);
+
     $post = get_post(2);
     if ($post && function_exists('NuxtPress\\set_url_post_meta')) {
       \NuxtPress\set_url_post_meta(2, $post, true);
     }
 
+    // Scaffold theme directory from createCustomTheme (mirrors init.mjs) if site name provided.
+    $site_name = !empty($_POST['kp_site_name'])
+      ? sanitize_text_field(wp_unslash($_POST['kp_site_name']))
+      : '';
+    $project_root = rtrim((string) getenv('PROJECT_ROOT'), '/');
+    if ($site_name && $project_root) {
+      $theme_dir = $project_root . '/src/themes/' . $site_name;
+      if (!is_dir($theme_dir)) {
+        kp_scaffold_theme($theme_dir, $site_name);
+      }
+    }
+
     restore_current_blog();
   }, 10, 2);
+}
+
+if (!function_exists('kp_scaffold_theme')) {
+  function kp_scaffold_theme($theme_dir, $theme_name) {
+    $dirs = [
+      $theme_dir . '/components',
+      $theme_dir . '/templates',
+      $theme_dir . '/assets/scss/base',
+      $theme_dir . '/assets/scss/abstracts',
+    ];
+    foreach ($dirs as $dir) {
+      wp_mkdir_p($dir);
+    }
+
+    // .gitkeep for empty dirs
+    file_put_contents($theme_dir . '/components/.gitkeep', '');
+    file_put_contents($theme_dir . '/templates/.gitkeep', '');
+
+    // abstracts/_colors.scss — required by shared _functions.scss
+    file_put_contents(
+      $theme_dir . '/assets/scss/abstracts/_colors.scss',
+      "/* {$theme_name} colors */\n\$colors: (\n  'white': #ffffff,\n  'black': #000000,\n  'error-red': #cb0000,\n);\n"
+    );
+
+    // base/index.scss
+    file_put_contents(
+      $theme_dir . '/assets/scss/base/index.scss',
+      "// {$theme_name} theme styles\n// Add theme-specific styles here\n"
+    );
+  }
 }
