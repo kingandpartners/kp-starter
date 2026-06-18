@@ -19,11 +19,23 @@ class Generator
   public static function generate_command()
   {
     self::ensure_multisite_enabled();
+    ['generated' => $generated, 'manifest' => $manifest] = self::generate();
+    self::cli('success', sprintf(
+      'Generated %s, and %d Apache vhosts.',
+      implode(', ', $generated),
+      count($manifest['sites'])
+    ));
+  }
 
+  /**
+   * Run the full generation pipeline and return the generated file list and
+   * manifest. Safe to call outside of a CLI context (no output side-effects).
+   */
+  public static function generate()
+  {
     $manifest = self::manifest();
     $is_local = 'development' === getenv('WP_ENV');
-
-    $has_arm = file_exists(self::project_path('docker-compose.arm.yml'));
+    $has_arm  = file_exists(self::project_path('docker-compose.arm.yml'));
 
     if (!$is_local) {
       self::write_file(self::project_path(self::GENERATED_DEPLOY_COMPOSE), self::render_deploy_compose($manifest));
@@ -40,11 +52,8 @@ class Generator
     if ($has_arm) {
       $generated[] = self::GENERATED_LOCAL_ARM_COMPOSE;
     }
-    self::cli('success', sprintf(
-      'Generated %s, and %d Apache vhosts.',
-      implode(', ', $generated),
-      count($manifest['sites'])
-    ));
+
+    return compact('generated', 'manifest');
   }
 
   /**
