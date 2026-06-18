@@ -60,10 +60,12 @@ class Generator
     $lines[] = 'Config::define(';
     $lines[] = "  'SITE_URLS',";
     $lines[] = '  array(';
+
+    // Collect all mappings first so we can sort them. More specific paths
+    // (subsites) must come before the bare admin hostname so that URL matching
+    // resolves correctly (longest/most-specific key first).
+    $mappings = [];
     foreach ($manifest['sites'] as $site) {
-      // Map admin domains + path to frontend domain for each environment.
-      // Build each entry only when the host env var is non-empty so that an
-      // empty var + site_path doesn't produce a path-only key like '/kp-multi'.
       $site_path = $site['site_path'] ? '/' . $site['site_path'] : '';
       foreach ([
         getenv('ADMIN_SERVERNAME') => $site['local_domain'],
@@ -71,10 +73,17 @@ class Generator
         getenv('PROD_ADMIN_DOMAIN') => $site['prod_domain'],
       ] as $host => $frontend) {
         if ($host && $frontend) {
-          $lines[] = sprintf("    '%s' => '%s',", $host . $site_path, $frontend);
+          $mappings[$host . $site_path] = $frontend;
         }
       }
     }
+
+    uksort($mappings, fn($a, $b) => strlen($b) - strlen($a));
+
+    foreach ($mappings as $admin => $frontend) {
+      $lines[] = sprintf("    '%s' => '%s',", $admin, $frontend);
+    }
+
     $lines[] = '  )';
     $lines[] = ');';
     $lines[] = '';
@@ -319,7 +328,7 @@ class Generator
     $lines[] = sprintf('      file: %s', $file);
     $lines[] = sprintf('      service: %s', $service);
     if ($local) {
-      $lines[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
+      $lines[] = sprintf('    command: sh -c "docker/scripts/healthcheck && corepack yarn dev --port %d"', $site['port']);
     } elseif ($site['port'] !== 3000) {
       $lines[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
     }
