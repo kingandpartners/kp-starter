@@ -224,8 +224,6 @@ class Generator
     $services[] = '      DOMAIN_CURRENT_SITE: "${DOMAIN_CURRENT_SITE}"';
     $services[] = '    env_file:';
     $services[] = '      - ./.env';
-    $services[] = '    volumes:';
-    $services[] = '      - /var/app/shared/wordpress/web/robots:/var/app/current/wordpress/web/robots:rw,cached';
     $services[] = '';
     $services[] = 'volumes:';
     $services[] = '  mysql-data:';
@@ -233,6 +231,8 @@ class Generator
     $services[] = '';
     $services[] = 'networks:';
     $services[] = '  nuxt_ssr:';
+    $services[] = '  traefik:';
+    $services[] = '    external: true';
 
     return implode(PHP_EOL, $services) . PHP_EOL;
   }
@@ -345,14 +345,32 @@ class Generator
     $lines[] = sprintf('      - %d:%d', $site['port'], $site['port']);
     $lines[] = '    environment:';
     $lines[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
-    if ($site['local_domain']) {
-      $scheme = $site['home_scheme'] ?: 'http';
-      $lines[] = sprintf('      FRONTEND_DOMAIN: %s', $site['local_domain']);
-      $lines[] = sprintf('      FRONTEND_URL: %s://%s', $scheme, $site['local_domain']);
+    $domain = $local ? $site['local_domain'] : $site['prod_domain'];
+    if ($domain) {
+      $scheme = $local ? ($site['home_scheme'] ?: 'http') : 'https';
+      $lines[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
+      $lines[] = sprintf('      FRONTEND_URL: %s://%s', $scheme, $domain);
     }
-    $lines[] = sprintf('      HMR_PORT: %d', $site['port']);
+    if ($local) {
+      $lines[] = sprintf('      HMR_PORT: %d', $site['port']);
+    }
+    if (!$local && $domain) {
+      $name = $site['service_name'];
+      $lines[] = '    labels:';
+      $lines[] = '      - "traefik.enable=true"';
+      $lines[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.service=wordpress"', $name);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
+      $lines[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=80"', $name);
+    }
     $lines[] = '    networks:';
-    $lines[] = $local ? '      default:' : '      nuxt_ssr:';
+    if ($local) {
+      $lines[] = '      default:';
+    } else {
+      $lines[] = '      nuxt_ssr:';
+      $lines[] = '      traefik:';
+    }
     return $lines;
   }
 
