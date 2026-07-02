@@ -509,6 +509,7 @@ class Generator
     if ($domain) {
       $scheme = $local ? ($site['home_scheme'] ?: 'http') : 'https';
       $lines[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
+      $lines[] = sprintf('      FRONTEND_SERVERNAME: %s', $domain);
       $lines[] = sprintf('      FRONTEND_URL: %s://%s', $scheme, $domain);
     }
     if ($local) {
