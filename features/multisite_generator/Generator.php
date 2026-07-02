@@ -502,7 +502,10 @@ class Generator
     $lines[] = sprintf('      - %d:%d', $site['port'], $site['port']);
     $lines[] = '    environment:';
     $lines[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
-    $domain = $local ? $site['local_domain'] : $site['prod_domain'];
+    $wp_env = getenv('WP_ENV') ?: 'production';
+    $domain = $local
+      ? $site['local_domain']
+      : ($wp_env === 'production' ? $site['prod_domain'] : ($site['beta_domain'] ?: $site['prod_domain']));
     if ($domain) {
       $scheme = $local ? ($site['home_scheme'] ?: 'http') : 'https';
       $lines[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
