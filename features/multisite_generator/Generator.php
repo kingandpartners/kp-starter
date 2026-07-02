@@ -237,10 +237,18 @@ class Generator
     $services[] = '      service: wordpress';
     $services[] = '    networks:';
     $services[] = '      nuxt_ssr:';
+    $services[] = '      traefik:';
     $services[] = '    environment:';
     $services[] = '      DOMAIN_CURRENT_SITE: "${DOMAIN_CURRENT_SITE}"';
     $services[] = '    env_file:';
     $services[] = '      - ./.env';
+    $services[] = '    labels:';
+    $services[] = '      - "traefik.enable=true"';
+    $admin_servername = getenv('ADMIN_SERVERNAME') ?: '${ADMIN_SERVERNAME}';
+    $services[] = sprintf('      - "traefik.http.routers.wordpress.rule=Host(`%s`)"', $admin_servername);
+    $services[] = '      - "traefik.http.routers.wordpress.entrypoints=websecure"';
+    $services[] = '      - "traefik.http.routers.wordpress.service=wordpress"';
+    $services[] = '      - "traefik.http.services.wordpress.loadbalancer.server.port=80"';
     $services[] = '';
     $services[] = 'volumes:';
     $services[] = '  mysql-data:';
