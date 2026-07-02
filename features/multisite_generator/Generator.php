@@ -6,6 +6,8 @@ class Generator
 {
   const GENERATED_APACHE_DIR = 'wordpress/web/conf/generated';
   const GENERATED_DEPLOY_COMPOSE = 'deploy/multisite.generated.yml';
+  const GENERATED_AWS_COMPOSE = 'docker-compose-aws.yml';
+  const GENERATED_LITE_COMPOSE = 'deploy/lite.yml';
   const GENERATED_LOCAL_COMPOSE = 'docker-compose.generated.yml';
   const GENERATED_LOCAL_ARM_COMPOSE = 'docker-compose.generated.arm.yml';
   const GENERATED_SITE_URLS = 'wordpress/config/generated-site-urls.php';
@@ -37,20 +39,35 @@ class Generator
     $is_local = 'development' === getenv('WP_ENV');
     $has_arm  = file_exists(self::project_path('docker-compose.arm.yml'));
 
-    if (!$is_local) {
-      self::write_file(self::project_path(self::GENERATED_DEPLOY_COMPOSE), self::render_deploy_compose($manifest));
+    if ($is_local) {
+      // Local: write all compose files into the repo tree so they can be committed.
+      self::write_file(self::project_path(self::GENERATED_AWS_COMPOSE), self::render_aws_compose($manifest));
+      self::write_file(self::project_path(self::GENERATED_LITE_COMPOSE), self::render_lite_compose($manifest));
+      self::write_file(self::project_path(self::GENERATED_LOCAL_COMPOSE), self::render_local_compose($manifest));
+      if ($has_arm) {
+        self::write_file(self::project_path(self::GENERATED_LOCAL_ARM_COMPOSE), self::render_local_arm_compose($manifest));
+      }
+    } else {
+      // Server: PROJECT_ROOT is the deploy tree root (e.g. /var/app/current).
+      // Write multisite.generated.yml directly at the root — no deploy/ prefix —
+      // so it lands on the bind-mounted shared path that docker compose can read.
+      self::write_file(self::project_path('multisite.generated.yml'), self::render_deploy_compose($manifest));
     }
-    self::write_file(self::project_path(self::GENERATED_LOCAL_COMPOSE), self::render_local_compose($manifest));
-    if ($has_arm) {
-      self::write_file(self::project_path(self::GENERATED_LOCAL_ARM_COMPOSE), self::render_local_arm_compose($manifest));
-    }
+
     self::write_apache_vhosts($manifest);
     self::write_site_urls_php($manifest);
 
-    $generated = $is_local ? [] : [self::GENERATED_DEPLOY_COMPOSE];
-    $generated[] = self::GENERATED_LOCAL_COMPOSE;
-    if ($has_arm) {
-      $generated[] = self::GENERATED_LOCAL_ARM_COMPOSE;
+    if ($is_local) {
+      $generated = [
+        self::GENERATED_AWS_COMPOSE,
+        self::GENERATED_LITE_COMPOSE,
+        self::GENERATED_LOCAL_COMPOSE,
+      ];
+      if ($has_arm) {
+        $generated[] = self::GENERATED_LOCAL_ARM_COMPOSE;
+      }
+    } else {
+      $generated = ['multisite.generated.yml'];
     }
 
     return compact('generated', 'manifest');
@@ -224,6 +241,138 @@ class Generator
     $services[] = '      DOMAIN_CURRENT_SITE: "${DOMAIN_CURRENT_SITE}"';
     $services[] = '    env_file:';
     $services[] = '      - ./.env';
+    $services[] = '';
+    $services[] = 'volumes:';
+    $services[] = '  mysql-data:';
+    $services[] = '  redis-data:';
+    $services[] = '';
+    $services[] = 'networks:';
+    $services[] = '  nuxt_ssr:';
+    $services[] = '  traefik:';
+    $services[] = '    external: true';
+
+    return implode(PHP_EOL, $services) . PHP_EOL;
+  }
+
+  protected static function render_aws_compose($manifest)
+  {
+    $services = [];
+    $services[] = 'services:';
+    $services[] = '';
+
+    foreach ($manifest['sites'] as $site) {
+      $services[] = sprintf('  %s:', $site['service_name']);
+      $services[] = sprintf('    image: "%s"', $site['image_name']);
+      $services[] = '    extends:';
+      $services[] = '      file: ./docker/services/nuxt.deploy.yml';
+      $services[] = '      service: nuxt';
+      if ($site['port'] !== 3000) {
+        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
+      }
+      $services[] = '    build:';
+      $services[] = '      args:';
+      $services[] = sprintf('        CURRENT_SITE: %s', $site['current_site']);
+      $services[] = '    environment:';
+      $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
+      if ($site['port'] !== 3000) {
+        $services[] = sprintf('      HMR_PORT: %d', $site['port']);
+      }
+      $services[] = '    ports:';
+      $services[] = sprintf('      - %d:%d', $site['port'], $site['port']);
+      $services[] = '';
+    }
+
+    $services[] = '  wordpress:';
+    $services[] = '    extends:';
+    $services[] = '      file: ./docker/services/wordpress.deploy.yml';
+    $services[] = '      service: wordpress';
+    $services[] = '';
+    $services[] = 'networks:';
+    $services[] = '  nuxt_ssr:';
+
+    return implode(PHP_EOL, $services) . PHP_EOL;
+  }
+
+  protected static function render_lite_compose($manifest)
+  {
+    $services = [];
+    $services[] = 'services:';
+    $services[] = '  mysql:';
+    $services[] = '    environment:';
+    $services[] = '      MYSQL_DATABASE: "${DB_NAME}"';
+    $services[] = '      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD}"';
+    $services[] = '    healthcheck:';
+    $services[] = "      test: \"tail -f /var/lib/mysql/error-log.log | sed -e '/ready for connections. Bind/q'\"";
+    $services[] = '      timeout: 20s';
+    $services[] = '      retries: 10';
+    $services[] = '    image: mysql:8.0.36';
+    $services[] = '    restart: unless-stopped';
+    $services[] = '    volumes:';
+    $services[] = '      - mysql-data:/var/lib/mysql';
+    $services[] = '    networks:';
+    $services[] = '      nuxt_ssr:';
+    $services[] = '';
+    $services[] = '  redis:';
+    $services[] = '    environment:';
+    $services[] = '      - ALLOW_EMPTY_PASSWORD=yes';
+    $services[] = '    image: redis:latest';
+    $services[] = '    restart: unless-stopped';
+    $services[] = '    volumes:';
+    $services[] = '      - redis-data:/data';
+    $services[] = '    networks:';
+    $services[] = '      nuxt_ssr:';
+    $services[] = '';
+
+    foreach ($manifest['sites'] as $site) {
+      $name = $site['service_name'];
+      $domain = $site['beta_domain'] ?: $site['prod_domain'];
+      $services[] = sprintf('  %s:', $name);
+      $services[] = sprintf('    image: "%s"', $site['image_name']);
+      $services[] = '    extends:';
+      $services[] = '      file: ./docker-compose.yml';
+      $services[] = '      service: nuxt';
+      if ($site['port'] !== 3000) {
+        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
+      }
+      $services[] = '    environment:';
+      $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
+      if ($domain) {
+        $services[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
+        $services[] = sprintf('      FRONTEND_URL: https://%s', $domain);
+      }
+      $services[] = '    ports:';
+      $services[] = sprintf('      - %d:%d', $site['port'], $site['port']);
+      $services[] = '    networks:';
+      $services[] = '      nuxt_ssr:';
+      $services[] = '      traefik:';
+      if ($domain) {
+        $services[] = '    labels:';
+        $services[] = '      - "traefik.enable=true"';
+        $services[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
+        $services[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
+        $services[] = sprintf('      - "traefik.http.routers.%s.service=%s"', $name, $name);
+        $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
+        $services[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=%d"', $name, $site['port']);
+      }
+      $services[] = '';
+    }
+
+    $admin_servername = getenv('ADMIN_SERVERNAME') ?: '${ADMIN_SERVERNAME}';
+    $services[] = '  wordpress:';
+    $services[] = '    extends:';
+    $services[] = '      file: ./docker-compose.yml';
+    $services[] = '      service: wordpress';
+    $services[] = '    networks:';
+    $services[] = '      nuxt_ssr:';
+    $services[] = '      traefik:';
+    $services[] = '    environment:';
+    $services[] = '      DOMAIN_CURRENT_SITE: "${DOMAIN_CURRENT_SITE}"';
+    $services[] = '    labels:';
+    $services[] = '      - "traefik.enable=true"';
+    $services[] = sprintf('      - "traefik.http.routers.wordpress.rule=Host(`%s`)"', $admin_servername);
+    $services[] = '      - "traefik.http.routers.wordpress.entrypoints=websecure"';
+    $services[] = '      - "traefik.http.routers.wordpress.service=wordpress"';
+    $services[] = '      - "traefik.http.services.wordpress.loadbalancer.server.port=80"';
     $services[] = '';
     $services[] = 'volumes:';
     $services[] = '  mysql-data:';
