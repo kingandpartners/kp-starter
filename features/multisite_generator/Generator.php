@@ -560,12 +560,17 @@ class Generator
   protected static function render_apache_vhost($site)
   {
     $lines = [];
+    $wp_env   = getenv('WP_ENV') ?: 'production';
+    $vhost_name = $wp_env === 'production' ? $site['prod_domain'] : ($site['beta_domain'] ?: $site['prod_domain']);
+    $vhost_name = $vhost_name ?: $site['local_domain'];
+
     $lines[] = '<VirtualHost *:80>';
-    $lines[] = sprintf('  ServerName %s', $site['local_domain']);
+    $lines[] = sprintf('  ServerName %s', $vhost_name);
     $lines[] = '';
     $lines[] = '  DocumentRoot ${APACHE_DOCUMENT_ROOT}';
     $lines[] = '  Protocols h2 http/1.1';
     $lines[] = '  RewriteEngine on';
+    $lines[] = '  ProxyPreserveHost On';
     $lines[] = '  SSLProxyEngine on';
     $lines[] = '  SSLProxyVerify none';
     $lines[] = '  SSLProxyCheckPeerCN off';
