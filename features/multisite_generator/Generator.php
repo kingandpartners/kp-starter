@@ -93,11 +93,13 @@ class Generator
     $mappings = [];
     foreach ($manifest['sites'] as $site) {
       $site_path = $site['site_path'] ? '/' . $site['site_path'] : '';
+      // Keep candidates as pairs so identical admin hosts are validated before
+      // they are assigned to the mapping and cannot overwrite each other.
       foreach ([
-        getenv('ADMIN_SERVERNAME') => $site['local_domain'],
-        getenv('BETA_ADMIN_DOMAIN') => $site['beta_domain'],
-        getenv('PROD_ADMIN_DOMAIN') => $site['prod_domain'],
-      ] as $host => $frontend) {
+        [getenv('ADMIN_SERVERNAME'), $site['local_domain']],
+        [getenv('BETA_ADMIN_DOMAIN'), $site['beta_domain']],
+        [getenv('PROD_ADMIN_DOMAIN'), $site['prod_domain']],
+      ] as [$host, $frontend]) {
         if ($host && $frontend) {
           $mappings[$host . $site_path] = $frontend;
         }
