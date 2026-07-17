@@ -12,14 +12,22 @@ class Client {
     return static::$instance;
   }
 
-  public static function set( $key, $value ) {
+  public static function set( $key, $value, $expires_in = null ) {
     $key = \Utilities\encodeURIComponent( self::full_key( $key ) );
-    self::client()->set( $key, $value );
+    if ( null === $expires_in ) {
+      self::client()->set( $key, $value );
+    } else {
+      self::client()->set( $key, $value, 'EX', $expires_in );
+    }
   }
 
-  public static function unscoped_set( $key, $value ) {
+  public static function unscoped_set( $key, $value, $expires_in = null ) {
     $key = \Utilities\encodeURIComponent( $key );
-    self::client()->set( $key, $value );
+    if ( null === $expires_in ) {
+      self::client()->set( $key, $value );
+    } else {
+      self::client()->set( $key, $value, 'EX', $expires_in );
+    }
   }
 
   public static function get( $key, $options = array() ) {
@@ -54,12 +62,12 @@ class Client {
   }
 }
 
-function redis_store( $key, $value ) {
-  Client::set( $key, wp_json_encode( $value ) );
+function redis_store( $key, $value, $expires_in = null ) {
+  Client::set( $key, wp_json_encode( $value ), $expires_in );
 }
 
-function redis_unscoped_store( $key, $value ) {
-  Client::unscoped_set( $key, wp_json_encode( $value ) );
+function redis_unscoped_store( $key, $value, $expires_in = null ) {
+  Client::unscoped_set( $key, wp_json_encode( $value ), $expires_in );
 }
 
 function redis_get( $key, $options = array() ) {

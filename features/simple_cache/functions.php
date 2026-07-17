@@ -43,10 +43,11 @@ class SimpleCache {
   }
 
   public function store($key, $value) {
+    $expires_in = $this->options['expires_in'];
     if (isset($this->options['unscoped'])) {
-      redis_unscoped_store($key, $value);
+      redis_unscoped_store($key, $value, $expires_in);
     } else {
-      redis_store($key, $value);
+      redis_store($key, $value, $expires_in);
     }
   }
 
