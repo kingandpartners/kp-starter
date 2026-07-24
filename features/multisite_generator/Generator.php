@@ -383,6 +383,37 @@ class Generator
     $services[] = '      - "traefik.http.routers.wordpress.entrypoints=websecure"';
     $services[] = '      - "traefik.http.routers.wordpress.service=wordpress"';
     $services[] = '      - "traefik.http.services.wordpress.loadbalancer.server.port=80"';
+
+    // Public sitemap/XML requests must reach WordPress even though the frontend
+    // domains route directly to the Nuxt services. Route *.xml/*.xsl on those
+    // domains to WordPress at a higher priority than the plain Host routers.
+    $public_domains = [];
+    foreach ($manifest['sites'] as $site) {
+      $public_domain = $site['beta_domain'] ?: $site['prod_domain'];
+      if ($public_domain) {
+        $public_domains[] = $public_domain;
+      }
+    }
+    $public_domains = array_values(array_unique($public_domains));
+
+    if ($public_domains) {
+      $host_rule = implode(' || ', array_map(
+        fn($domain) => sprintf('Host(`%s`)', $domain),
+        $public_domains
+      ));
+      if (count($public_domains) > 1) {
+        $host_rule = '(' . $host_rule . ')';
+      }
+      $services[] = sprintf(
+        '      - "traefik.http.routers.wordpress-public-xml.rule=%s && PathRegexp(`(?i)^/.*[.](xml|xsl)$`)"',
+        $host_rule
+      );
+      $services[] = '      - "traefik.http.routers.wordpress-public-xml.entrypoints=websecure"';
+      $services[] = '      - "traefik.http.routers.wordpress-public-xml.service=wordpress"';
+      $services[] = '      - "traefik.http.routers.wordpress-public-xml.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"';
+      $services[] = '      - "traefik.http.routers.wordpress-public-xml.priority=100"';
+    }
+
     $services[] = '';
     $services[] = 'volumes:';
     $services[] = '  mysql-data:';
