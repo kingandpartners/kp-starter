@@ -198,6 +198,41 @@ class Generator
     return apply_filters('kp_multisite_generator_site_config', $config, get_current_blog_id());
   }
 
+  /**
+   * The tuned redis service used by the production compose files
+   * (deploy/lite.yml and multisite.generated.yml). Kept in one place so the
+   * command/healthcheck/memory limits are not lost when the files are
+   * regenerated after adding a multisite.
+   */
+  protected static function render_redis_service()
+  {
+    return [
+      '  redis:',
+      '    command:',
+      '      - redis-server',
+      '      - --maxmemory',
+      '      - 1gb',
+      '      - --maxmemory-policy',
+      '      - volatile-lru',
+      '    environment:',
+      '      - ALLOW_EMPTY_PASSWORD=yes',
+      '    healthcheck:',
+      "      test: ['CMD', 'redis-cli', 'ping']",
+      '      interval: 10s',
+      '      timeout: 3s',
+      '      retries: 5',
+      '      start_period: 20s',
+      '    image: redis:8.8.0',
+      '    mem_limit: 1536m',
+      '    memswap_limit: 1536m',
+      '    restart: unless-stopped',
+      '    volumes:',
+      '      - redis-data:/data',
+      '    networks:',
+      '      nuxt_ssr:',
+    ];
+  }
+
   protected static function render_deploy_compose($manifest)
   {
     $services = [];
@@ -217,15 +252,7 @@ class Generator
     $services[] = '    networks:';
     $services[] = '      nuxt_ssr:';
     $services[] = '';
-    $services[] = '  redis:';
-    $services[] = '    environment:';
-    $services[] = '      - ALLOW_EMPTY_PASSWORD=yes';
-    $services[] = '    image: redis:latest';
-    $services[] = '    restart: unless-stopped';
-    $services[] = '    volumes:';
-    $services[] = '      - redis-data:/data';
-    $services[] = '    networks:';
-    $services[] = '      nuxt_ssr:';
+    $services = array_merge($services, self::render_redis_service());
     $services[] = '';
 
     foreach ($manifest['sites'] as $site) {
@@ -322,15 +349,7 @@ class Generator
     $services[] = '    networks:';
     $services[] = '      nuxt_ssr:';
     $services[] = '';
-    $services[] = '  redis:';
-    $services[] = '    environment:';
-    $services[] = '      - ALLOW_EMPTY_PASSWORD=yes';
-    $services[] = '    image: redis:latest';
-    $services[] = '    restart: unless-stopped';
-    $services[] = '    volumes:';
-    $services[] = '      - redis-data:/data';
-    $services[] = '    networks:';
-    $services[] = '      nuxt_ssr:';
+    $services = array_merge($services, self::render_redis_service());
     $services[] = '';
 
     foreach ($manifest['sites'] as $site) {

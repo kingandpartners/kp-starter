@@ -101,6 +101,12 @@ if (!function_exists('kp_scaffold_theme')) {
       "/* {$theme_name} colors */\n\$colors: (\n  'white': #ffffff,\n  'black': #000000,\n  'error-red': #cb0000,\n);\n"
     );
 
+    // abstracts/index.scss — forwards shared abstracts plus this theme's colors
+    file_put_contents(
+      $theme_dir . '/assets/scss/abstracts/index.scss',
+      "@forward '!!shared/assets/scss/abstracts';\n@forward 'colors';\n// @forward 'fonts';\n"
+    );
+
     // base/index.scss
     file_put_contents(
       $theme_dir . '/assets/scss/base/index.scss',
