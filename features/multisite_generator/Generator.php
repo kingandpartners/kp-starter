@@ -21,12 +21,23 @@ class Generator
   public static function generate_command()
   {
     self::ensure_multisite_enabled();
-    ['generated' => $generated, 'manifest' => $manifest] = self::generate();
-    self::cli('success', sprintf(
-      'Generated %s, and %d Apache vhosts.',
-      implode(', ', $generated),
-      count($manifest['sites'])
-    ));
+    ['generated' => $generated, 'apache_vhosts' => $apache_vhosts] = self::generate();
+    $message = 'Generated ' . implode(', ', $generated);
+    if ($apache_vhosts > 0) {
+      $message .= sprintf(', and %d Apache vhosts', $apache_vhosts);
+    }
+    self::cli('success', $message . '.');
+  }
+
+  /**
+   * Whether the project uses single-URL subdirectory routing (one frontend
+   * serving every subsite under one domain) instead of a domain/container per
+   * site. In this mode no per-site Apache vhosts or Docker Compose services are
+   * generated — the committed compose/vhost files are used as-is.
+   */
+  protected static function is_subdirectory_routing()
+  {
+    return 'subdirectory' === strtolower((string) getenv('MULTISITE_ROUTING'));
   }
 
   /**
@@ -38,6 +49,18 @@ class Generator
     $manifest = self::manifest();
     $is_local = 'development' === getenv('WP_ENV');
     $has_arm  = file_exists(self::project_path('docker-compose.arm.yml'));
+
+    // Subdirectory routing: a single frontend serves every subsite under one
+    // URL, so there are no per-site Apache vhosts or Docker Compose services to
+    // generate. Only the SITE_URLS mapping (admin -> frontend) is written.
+    if (self::is_subdirectory_routing()) {
+      self::write_site_urls_php($manifest);
+      return [
+        'generated'     => [self::GENERATED_SITE_URLS],
+        'manifest'      => $manifest,
+        'apache_vhosts' => 0,
+      ];
+    }
 
     if ($is_local) {
       // Local: write all compose files into the repo tree so they can be committed.
@@ -70,7 +93,11 @@ class Generator
       $generated = ['multisite.generated.yml'];
     }
 
-    return compact('generated', 'manifest');
+    return [
+      'generated'     => $generated,
+      'manifest'      => $manifest,
+      'apache_vhosts' => count($manifest['sites']),
+    ];
   }
 
   /**
@@ -90,6 +117,29 @@ class Generator
     // Collect all mappings first so we can sort them. More specific paths
     // (subsites) must come before the bare admin hostname so that URL matching
     // resolves correctly (longest/most-specific key first).
+    $mappings = self::is_subdirectory_routing()
+      ? self::site_urls_subdirectory_mappings()
+      : self::site_urls_domain_mappings($manifest);
+
+    uksort($mappings, fn($a, $b) => strlen($b) - strlen($a));
+
+    foreach ($mappings as $admin => $frontend) {
+      $lines[] = sprintf("    '%s' => '%s',", $admin, $frontend);
+    }
+
+    $lines[] = '  )';
+    $lines[] = ');';
+    $lines[] = '';
+    $path = self::project_path(self::GENERATED_SITE_URLS);
+    self::write_file($path, implode(PHP_EOL, $lines));
+  }
+
+  /**
+   * Domain-per-site routing: each subsite maps its admin host + path to its own
+   * frontend domain.
+   */
+  protected static function site_urls_domain_mappings($manifest)
+  {
     $mappings = [];
     foreach ($manifest['sites'] as $site) {
       $site_path = $site['site_path'] ? '/' . $site['site_path'] : '';
@@ -105,18 +155,28 @@ class Generator
         }
       }
     }
+    return $mappings;
+  }
 
-    uksort($mappings, fn($a, $b) => strlen($b) - strlen($a));
-
-    foreach ($mappings as $admin => $frontend) {
-      $lines[] = sprintf("    '%s' => '%s',", $admin, $frontend);
+  /**
+   * Subdirectory routing: a single frontend domain serves every subsite, so the
+   * admin host is swapped for the frontend host while the subsite path is left
+   * intact (e.g. admin.example.com/site-a -> example.com/site-a). This is a
+   * host -> host mapping, one entry per environment.
+   */
+  protected static function site_urls_subdirectory_mappings()
+  {
+    $mappings = [];
+    foreach ([
+      [getenv('ADMIN_SERVERNAME'), getenv('FRONTEND_DOMAIN')],
+      [getenv('BETA_ADMIN_DOMAIN'), getenv('BETA_DOMAIN')],
+      [getenv('PROD_ADMIN_DOMAIN'), getenv('PROD_DOMAIN')],
+    ] as [$admin_host, $frontend_host]) {
+      if ($admin_host && $frontend_host) {
+        $mappings[$admin_host] = $frontend_host;
+      }
     }
-
-    $lines[] = '  )';
-    $lines[] = ');';
-    $lines[] = '';
-    $path = self::project_path(self::GENERATED_SITE_URLS);
-    self::write_file($path, implode(PHP_EOL, $lines));
+    return $mappings;
   }
 
   public static function manifest()
