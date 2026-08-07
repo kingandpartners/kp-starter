@@ -2,7 +2,7 @@
   "name": "kingandpartners/kp-starter",
   "type": "wordpress-muplugin",
   "license": "MIT",
-  "description": "Common runtime, features, and configuration for King & Partners WordPress projects.",
+  "description": "Common runtime, features, configuration, and multisite tooling for King & Partners WordPress projects.",
   "authors": [
     {
       "name": "King & Partners",

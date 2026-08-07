@@ -7,7 +7,7 @@
  * Author:          King & Partners
  * Author URI:      https://www.kingandpartners.com
  * Text Domain:     kp-starter
- * Version:         0.0.1
+ * Version:         0.4.0
  *
  * @package         KP_Starter
  */
@@ -18,6 +18,7 @@ require_once __DIR__ . '/url_modification.php';
 require_once __DIR__ . '/features/runtime/bedrock-autoloader.php';
 require_once __DIR__ . '/features/runtime/phpbrake-init.php';
 require_once __DIR__ . '/features/runtime/suppress-deprecated-notices.php';
+require_once __DIR__ . '/features/acf-relationship-multisite/acf-relationship-multisite.php';
 
 class Site {
   public static $config = array(
