@@ -54,5 +54,8 @@
     "wpackagist-plugin/wordpress-importer": "^0.9",
     "wpengine/advanced-custom-fields-pro": "^6.4.2",
     "yoast/wordpress-seo-premium": "^27.7"
+  },
+  "scripts": {
+    "test": "php tests/smoke.php"
   }
 }
