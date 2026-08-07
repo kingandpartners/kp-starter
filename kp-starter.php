@@ -7,7 +7,7 @@
  * Author:          King & Partners
  * Author URI:      https://www.kingandpartners.com
  * Text Domain:     kp-starter
- * Version:         0.4.0
+ * Version:         0.5.0
  *
  * @package         KP_Starter
  */
