@@ -58,4 +58,10 @@ foreach ([
     }
 }
 
+$application_config = file_get_contents($root . '/config/application.php');
+
+if (!str_contains($application_config, "getenv('WORDPRESS_ROOT') ?: dirname(__DIR__, 5)")) {
+    throw new RuntimeException('Bedrock root must be independent of PROJECT_ROOT.');
+}
+
 echo "kp-starter smoke tests passed.\n";

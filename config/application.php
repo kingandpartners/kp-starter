@@ -17,11 +17,13 @@ use function Env\env;
 Env\Env::$options = 31;
 
 /**
- * Directory containing all of the site's files
+ * Bedrock root. PROJECT_ROOT points at the consumer repository so shared
+ * features can discover cms/ and src/; it must not be used as the WordPress
+ * root when WordPress lives in the repository's wordpress/ subdirectory.
  *
  * @var string
  */
-$root_dir = getenv('PROJECT_ROOT') ?: dirname(__DIR__, 5);
+$root_dir = rtrim(getenv('WORDPRESS_ROOT') ?: dirname(__DIR__, 5), '/');
 
 /**
  * Document Root
