@@ -64,4 +64,28 @@ if (!str_contains($application_config, "getenv('WORDPRESS_ROOT') ?: dirname(__DI
     throw new RuntimeException('Bedrock root must be independent of PROJECT_ROOT.');
 }
 
+define('WP_CLI', true);
+
+class WP_CLI
+{
+    public static array $commands = [];
+
+    public static function add_command(string $name, callable $handler): void
+    {
+        self::$commands[$name] = $handler;
+    }
+}
+
+function add_action(): void
+{
+}
+
+require $root . '/features/multisite_generator/functions.php';
+
+foreach (['kp multisite generate', 'kp multisite manifest'] as $command) {
+    if (!isset(WP_CLI::$commands[$command])) {
+        throw new RuntimeException("WP-CLI command was not registered: {$command}");
+    }
+}
+
 echo "kp-starter smoke tests passed.\n";
