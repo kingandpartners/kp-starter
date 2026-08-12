@@ -30,6 +30,10 @@
     {
       "type": "vcs",
       "url": "git@github.com:kingandpartners/elastic-press.git"
+    },
+    {
+      "type": "vcs",
+      "url": "git@github.com:kingandpartners/nuxt-theme.git"
     }
   ],
   "require": {
@@ -38,6 +42,7 @@
     "composer/installers": "^2.2",
     "flyntwp/acf-field-group-composer": "^1.1.0",
     "kingandpartners/elastic-press": "dev-nuxt-press-updates-2",
+    "kingandpartners/nuxt-theme": "^0.2",
     "oscarotero/env": "^2.1",
     "predis/predis": "^3.5.0",
     "roots/bedrock-autoloader": "^1.0",

@@ -91,7 +91,15 @@ class Site {
     $package_files = glob(__DIR__ . '/cms/{shared}/{*,*/*,*/*/*,*/*/*/*}/{functions,fields,taxonomies,config}.{php,json}', GLOB_BRACE);
     $features_dir  = __DIR__ . '/features';
     $plugin_files  = glob($features_dir . '/**/{functions,fields,taxonomies,config}.{php,json}', GLOB_BRACE);
-    $files         = array_merge($project_files, $package_files, $plugin_files);
+    // Sibling mu-plugin packages that ship their own cms/shared tree, so a
+    // package providing frontend components (e.g. kingandpartners/nuxt-theme)
+    // can also ship the ACF definitions for them instead of every project
+    // copying the JSON. Self is excluded: already covered by $package_files.
+    $sibling_files = array_filter(
+      glob(dirname(__DIR__) . '/*/cms/{shared}/{*,*/*,*/*/*,*/*/*/*}/{functions,fields,taxonomies,config}.{php,json}', GLOB_BRACE) ?: [],
+      fn($file) => !str_starts_with($file, __DIR__ . '/')
+    );
+    $files         = array_merge($project_files, $package_files, $sibling_files, $plugin_files);
     foreach($files as $file) {
       // which kind of file is it? functions, fields, taxonomies, config (json or php)
       $filename = basename($file);
