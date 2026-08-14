@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Error routing outside production.
+ * Error routing for every environment that logs.
  *
  *  - Errors are never rendered into the page. Besides being noise in wp-admin,
  *    a displayed error corrupts the JSON of `nuxtpress` REST responses, and it
@@ -21,7 +21,13 @@
  * is loaded, so this must run as a MU feature.
  */
 
-if (!defined('WP_ENV') || WP_ENV === 'production') {
+/**
+ * Keyed off WP_DEBUG rather than the environment name. wp_debug_mode() only
+ * configures error logging when WP_DEBUG is on, and otherwise installs a
+ * deliberately restricted error_reporting level — there is nothing to route in
+ * that case, and widening it would be a regression.
+ */
+if (!defined('WP_DEBUG') || !WP_DEBUG) {
     return;
 }
 
