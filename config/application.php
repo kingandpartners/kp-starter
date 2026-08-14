@@ -134,6 +134,29 @@ if (file_exists($env_config)) {
     require_once $env_config;
 }
 
+/**
+ * Ensure the directory behind each configured log file exists. Neither PHP nor
+ * WordPress creates it, and wp_debug_mode() sets the error_log ini before
+ * mu-plugins load — so a missing directory means errors are dropped silently
+ * rather than logged.
+ */
+foreach (['WP_DEBUG_LOG', 'WP_DEPRECATION_LOG'] as $log_key) {
+    try {
+        $log_path = Config::get($log_key);
+    } catch (\Roots\WPConfig\Exceptions\UndefinedConfigKeyException $e) {
+        continue;
+    }
+
+    if (!is_string($log_path) || is_dir(dirname($log_path))) {
+        continue;
+    }
+
+    // Suppressed: a read-only filesystem is not a reason to fail the request.
+    @mkdir(dirname($log_path), 0775, true);
+}
+
+unset($log_key, $log_path);
+
 require_once __DIR__ . '/customizations.php';
 
 Config::apply();

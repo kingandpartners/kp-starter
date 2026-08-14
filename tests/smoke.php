@@ -11,7 +11,7 @@ $required_files = [
     'config/customizations.php',
     'features/runtime/bedrock-autoloader.php',
     'features/runtime/phpbrake-init.php',
-    'features/runtime/suppress-deprecated-notices.php',
+    'features/runtime/route-error-logs.php',
     'features/acf-relationship-multisite/acf-relationship-multisite.php',
     'features/acf-relationship-multisite/acf-relationship-multisite-v5.php',
     'features/acf-relationship-multisite/js/input.js',
@@ -50,7 +50,7 @@ $bootstrap = file_get_contents($root . '/kp-starter.php');
 foreach ([
     "features/runtime/bedrock-autoloader.php",
     "features/runtime/phpbrake-init.php",
-    "features/runtime/suppress-deprecated-notices.php",
+    "features/runtime/route-error-logs.php",
     "features/acf-relationship-multisite/acf-relationship-multisite.php",
 ] as $required_include) {
     if (!str_contains($bootstrap, $required_include)) {
