@@ -8,6 +8,7 @@ use function NuxtSsr\Redis\redis_store;
 use function NuxtSsr\Redis\redis_unscoped_store;
 
 add_action('wp_insert_post', __NAMESPACE__ . '\wp_insert_post', 10, 3);
+add_action('before_delete_post', __NAMESPACE__ . '\before_delete_post', 10, 2);
 add_action('acf/save_post', __NAMESPACE__ . '\acf_save_post', 10, 1);
 add_action('edited_term', __NAMESPACE__ . '\bump_global_cache', 10, 1);
 add_action('wp_update_nav_menu', __NAMESPACE__ . '\bump_global_cache', 10, 1);
@@ -19,6 +20,30 @@ function wp_insert_post($id, $obj, $update) {
 
   if (in_array($obj->post_type, ['revision', 'page'])) {
     bump_page_cache_version($id, $obj, $update);
+  } else {
+    bump_global_cache($id);
+  }
+}
+
+/**
+ * Permanent deletion does not fire `wp_insert_post`, so without this the cache
+ * would keep serving a post that no longer exists until the key expired.
+ *
+ * Trashing already bumps the right key through `wp_insert_post`, and a post
+ * deleted out of the trash carries a `__trashed` permalink whose key nothing
+ * reads. Deleting a published post outright is the case this covers.
+ *
+ * Revisions are skipped: WordPress prunes them on its own schedule and a
+ * deleted revision cannot change what the front end renders.
+ */
+function before_delete_post($id, $obj = null) {
+  $obj = $obj ?? get_post($id);
+  if (empty($obj)) return;
+  if ('revision' === $obj->post_type) return;
+  if (in_array($obj->post_type, ignored_post_types())) return;
+
+  if ('page' === $obj->post_type) {
+    bump_page_cache_version($id, $obj, true);
   } else {
     bump_global_cache($id);
   }
