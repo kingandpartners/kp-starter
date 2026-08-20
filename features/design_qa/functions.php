@@ -20,6 +20,30 @@ namespace KpStarter\DesignQa;
 const PAGE_NAME = 'design_QA';
 const MENU_SLUG = 'globalOptionsFeatureDesignQA';
 
+/**
+ * The QA features a developer has defined, as `slug => label`.
+ *
+ * Discovered from `qa/<slug>/config.json` in the project rather than stored
+ * here: the frame map changes in the same commit as the feature it describes,
+ * so the repository is its home. WordPress only chooses between them.
+ */
+function features() {
+  // The same variable the plugin already uses to find project-owned CMS files,
+  // so discovery cannot disagree with the rest of the loader.
+  $root = getenv('PROJECT_ROOT');
+  if (!$root) return array();
+
+  $found = array();
+
+  foreach ((array) glob("$root/qa/*/config.json") as $file) {
+    $slug = basename(dirname($file));
+    $config = json_decode((string) file_get_contents($file), true);
+    $found[$slug] = is_array($config) && !empty($config['label']) ? $config['label'] : $slug;
+  }
+
+  return $found;
+}
+
 function is_development() {
   return defined('WP_ENV') ? WP_ENV === 'development' : getenv('WP_ENV') === 'development';
 }
@@ -40,10 +64,18 @@ function option($name, $default = null) {
  * The settings the frontend and its dev-only report endpoint both read.
  */
 function settings() {
+  $feature = (string) option('feature', '');
+  $available = features();
+
+  // A feature that has been renamed or removed should not silently point QA at
+  // frames that no longer exist.
+  if ($feature !== '' && !isset($available[$feature])) $feature = '';
+
   return array(
     // Absent means on: a project that has never opened the page still gets the
     // overlay, which is the useful default for a tool you opt out of.
     'enabled' => (bool) option('enabled', true),
+    'feature' => $feature ?: null,
     'issue'   => (int) option('github_issue', 0) ?: null,
   );
 }
@@ -66,11 +98,20 @@ add_action('acf/init', function () {
         'instructions'  => 'Turns the Design QA inspector on for this site in development. Reload the frontend after changing it.',
       ),
       array(
+        'label'         => 'Feature being reviewed',
+        'name'          => 'feature',
+        'type'          => 'select',
+        'allow_null'    => 1,
+        'ui'            => 1,
+        'choices'       => features(),
+        'instructions'  => 'Which qa/<feature>/config.json the overlay measures against. Discovered from the repository — add a directory to add a choice. Can also be switched from the overlay panel during a session.',
+      ),
+      array(
         'label'        => 'GitHub issue',
         'name'         => 'github_issue',
         'type'         => 'number',
         'min'          => 1,
-        'instructions' => 'The issue number reports are posted to. Leave empty to fall back to the issue configured in nuxt.config.js.',
+        'instructions' => 'Overrides the issue the selected feature declares. Leave empty to use the feature\'s own.',
       ),
     )
   );
