@@ -18,6 +18,7 @@ require_once __DIR__ . '/url_modification.php';
 require_once __DIR__ . '/features/runtime/bedrock-autoloader.php';
 require_once __DIR__ . '/features/runtime/phpbrake-init.php';
 require_once __DIR__ . '/features/runtime/route-error-logs.php';
+require_once __DIR__ . '/features/runtime/dev-mail.php';
 require_once __DIR__ . '/features/acf-relationship-multisite/acf-relationship-multisite.php';
 
 class Site {
