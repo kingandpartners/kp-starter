@@ -61,6 +61,9 @@
     "yoast/wordpress-seo-premium": "^27.7"
   },
   "scripts": {
-    "test": "php tests/smoke.php"
+    "test": [
+      "php tests/smoke.php",
+      "php tests/dev-mail.php"
+    ]
   }
 }
