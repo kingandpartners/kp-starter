@@ -426,11 +426,13 @@ class Generator
       $services[] = '    extends:';
       $services[] = '      file: ./docker-compose.yml';
       $services[] = '      service: nuxt';
-      if ($site['port'] !== 3000) {
-        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
-      }
       $services[] = '    environment:';
       $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
+      if ($site['port'] !== 3000) {
+        // Same as the deploy renderer: the image runs the Nitro build directly
+        // and has no package manager, so the port comes from PORT.
+        $services[] = sprintf('      PORT: %d', $site['port']);
+      }
       if ($domain) {
         $services[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
         $services[] = sprintf('      FRONTEND_URL: https://%s', $domain);
