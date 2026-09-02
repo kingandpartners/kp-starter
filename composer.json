@@ -2,7 +2,7 @@
   "name": "kingandpartners/kp-starter",
   "type": "wordpress-muplugin",
   "license": "MIT",
-  "description": "Common functionality for King & Partners WordPress projects.",
+  "description": "Common runtime, features, configuration, and multisite tooling for King & Partners WordPress projects.",
   "authors": [
     {
       "name": "King & Partners",
@@ -30,6 +30,10 @@
     {
       "type": "vcs",
       "url": "git@github.com:kingandpartners/elastic-press.git"
+    },
+    {
+      "type": "vcs",
+      "url": "git@github.com:kingandpartners/nuxt-theme.git"
     }
   ],
   "require": {
@@ -38,12 +42,13 @@
     "composer/installers": "^2.2",
     "flyntwp/acf-field-group-composer": "^1.1.0",
     "kingandpartners/elastic-press": "dev-nuxt-press-updates-2",
+    "kingandpartners/nuxt-theme": "^0.2",
     "oscarotero/env": "^2.1",
     "predis/predis": "^3.5.0",
     "roots/bedrock-autoloader": "^1.0",
     "roots/bedrock-disallow-indexing": "^2.0",
     "roots/wordpress": "^7.0",
-    "roots/wp-config": "1.0.0",
+    "roots/wp-config": "^1.0",
     "vlucas/phpdotenv": "^5.5",
     "wpackagist-plugin/amazon-s3-and-cloudfront": "^3.2.11",
     "wpackagist-plugin/contact-form-7": "^6.0",
@@ -54,5 +59,11 @@
     "wpackagist-plugin/wordpress-importer": "^0.9",
     "wpengine/advanced-custom-fields-pro": "^6.4.2",
     "yoast/wordpress-seo-premium": "^27.7"
+  },
+  "scripts": {
+    "test": [
+      "php tests/smoke.php",
+      "php tests/dev-mail.php"
+    ]
   }
 }

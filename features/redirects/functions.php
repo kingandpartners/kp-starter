@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/nuxt-functions.php';
+
 // Yoast Redirects are handled using Apache redirects loaded in separate files.
 //
 // Upon save of redirects, Yoast generates the .redirect files mentioned above.

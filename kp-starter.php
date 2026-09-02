@@ -7,7 +7,7 @@
  * Author:          King & Partners
  * Author URI:      https://www.kingandpartners.com
  * Text Domain:     kp-starter
- * Version:         0.0.1
+ * Version:         0.5.0
  *
  * @package         KP_Starter
  */
@@ -15,6 +15,11 @@
 use ACFComposer\ACFComposer;
 
 require_once __DIR__ . '/url_modification.php';
+require_once __DIR__ . '/features/runtime/bedrock-autoloader.php';
+require_once __DIR__ . '/features/runtime/phpbrake-init.php';
+require_once __DIR__ . '/features/runtime/route-error-logs.php';
+require_once __DIR__ . '/features/runtime/dev-mail.php';
+require_once __DIR__ . '/features/acf-relationship-multisite/acf-relationship-multisite.php';
 
 class Site {
   public static $config = array(
@@ -84,9 +89,18 @@ class Site {
     $child_theme   = get_option('options_globalOptionsComponentSite_site');
     if ($child_theme) $theme_dir = "$theme_dir,$child_theme";
     $project_files = glob("$project_root/{cms,src/themes}/{" . $theme_dir . ",shared}/{*,*/*,*/*/*,*/*/*/*}/{functions,fields,taxonomies,config}.{php,json}", GLOB_BRACE);
+    $package_files = glob(__DIR__ . '/cms/{shared}/{*,*/*,*/*/*,*/*/*/*}/{functions,fields,taxonomies,config}.{php,json}', GLOB_BRACE);
     $features_dir  = __DIR__ . '/features';
     $plugin_files  = glob($features_dir . '/**/{functions,fields,taxonomies,config}.{php,json}', GLOB_BRACE);
-    $files         = array_merge($project_files, $plugin_files);
+    // Sibling mu-plugin packages that ship their own cms/shared tree, so a
+    // package providing frontend components (e.g. kingandpartners/nuxt-theme)
+    // can also ship the ACF definitions for them instead of every project
+    // copying the JSON. Self is excluded: already covered by $package_files.
+    $sibling_files = array_filter(
+      glob(dirname(__DIR__) . '/*/cms/{shared}/{*,*/*,*/*/*,*/*/*/*}/{functions,fields,taxonomies,config}.{php,json}', GLOB_BRACE) ?: [],
+      fn($file) => !str_starts_with($file, __DIR__ . '/')
+    );
+    $files         = array_merge($project_files, $package_files, $sibling_files, $plugin_files);
     foreach($files as $file) {
       // which kind of file is it? functions, fields, taxonomies, config (json or php)
       $filename = basename($file);
