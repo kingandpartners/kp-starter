@@ -363,15 +363,16 @@ class Generator
       $services[] = '    extends:';
       $services[] = '      file: ./docker/services/nuxt.deploy.yml';
       $services[] = '      service: nuxt';
+      if ($site['port'] !== 3000) {
+        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
+      }
       $services[] = '    build:';
       $services[] = '      args:';
       $services[] = sprintf('        CURRENT_SITE: %s', $site['current_site']);
       $services[] = '    environment:';
       $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
       if ($site['port'] !== 3000) {
-        // The built image runs the Nitro server directly and has no package
-        // manager, so the listening port comes from PORT.
-        $services[] = sprintf('      PORT: %d', $site['port']);
+        $services[] = sprintf('      HMR_PORT: %d', $site['port']);
       }
       $services[] = '    ports:';
       $services[] = sprintf('      - %d:%d', $site['port'], $site['port']);
@@ -385,13 +386,6 @@ class Generator
     $services[] = '';
     $services[] = 'networks:';
     $services[] = '  nuxt_ssr:';
-    $services[] = '';
-    // nuxt.deploy.yml declares `build.secrets: [node_auth_token]`, and `extends`
-    // does not merge top-level keys, so this file has to define the secret or
-    // the whole compose project is invalid and no image can be built.
-    $services[] = 'secrets:';
-    $services[] = '  node_auth_token:';
-    $services[] = '    environment: NODE_AUTH_TOKEN';
 
     return implode(PHP_EOL, $services) . PHP_EOL;
   }
@@ -426,13 +420,11 @@ class Generator
       $services[] = '    extends:';
       $services[] = '      file: ./docker-compose.yml';
       $services[] = '      service: nuxt';
+      if ($site['port'] !== 3000) {
+        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
+      }
       $services[] = '    environment:';
       $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
-      if ($site['port'] !== 3000) {
-        // Same as the deploy renderer: the image runs the Nitro build directly
-        // and has no package manager, so the port comes from PORT.
-        $services[] = sprintf('      PORT: %d', $site['port']);
-      }
       if ($domain) {
         $services[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
         $services[] = sprintf('      FRONTEND_URL: https://%s', $domain);
@@ -615,16 +607,13 @@ class Generator
     $lines[] = sprintf('      service: %s', $service);
     if ($local) {
       $lines[] = sprintf('    command: sh -c "docker/scripts/healthcheck && corepack yarn dev --port %d"', $site['port']);
+    } elseif ($site['port'] !== 3000) {
+      $lines[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
     }
     $lines[] = '    ports:';
     $lines[] = sprintf('      - %d:%d', $site['port'], $site['port']);
     $lines[] = '    environment:';
     $lines[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
-    if (!$local) {
-      // The deployed image runs the Nitro build directly and has no package
-      // manager, so the listening port comes from PORT rather than a command.
-      $lines[] = sprintf('      PORT: %d', $site['port']);
-    }
     $wp_env = getenv('WP_ENV') ?: 'production';
     $domain = $local
       ? $site['local_domain']
@@ -644,9 +633,9 @@ class Generator
       $lines[] = '      - "traefik.enable=true"';
       $lines[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
       $lines[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
-      $lines[] = sprintf('      - "traefik.http.routers.%s.service=%s"', $name, $name);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.service=wordpress"', $name);
       $lines[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
-      $lines[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=%d"', $name, $site['port']);
+      $lines[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=80"', $name);
     }
     $lines[] = '    networks:';
     if ($local) {
