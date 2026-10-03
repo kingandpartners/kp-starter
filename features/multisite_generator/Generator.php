@@ -693,6 +693,11 @@ class Generator
     $lines[] = '  Protocols h2 http/1.1';
     $lines[] = '  RewriteEngine on';
     $lines[] = '  ProxyPreserveHost On';
+    // Nuxt's dev server imports virtual modules by ids containing an encoded
+    // slash (`@id/virtual:nuxt:.nuxt-<site>%2Fnuxt.config.mjs`). Apache's
+    // default (Off) 404s those before proxying, so pages never hydrate. Vhosts
+    // don't inherit this from the server config, so it has to be set here.
+    $lines[] = '  AllowEncodedSlashes NoDecode';
     $lines[] = '  SSLProxyEngine on';
     $lines[] = '  SSLProxyVerify none';
     $lines[] = '  SSLProxyCheckPeerCN off';

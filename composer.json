@@ -64,7 +64,8 @@
     "test": [
       "php tests/smoke.php",
       "php tests/dev-mail.php",
-      "php tests/templates.php"
+      "php tests/templates.php",
+      "php tests/generator.php"
     ]
   }
 }
