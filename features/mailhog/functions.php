@@ -1,6 +1,12 @@
 <?php
 
 // NOTE: you must disable the WP Offload SES Lite plugin for this to work
+//
+// This hook only reaches the mailer when nothing else has taken the transport
+// over. Post SMTP does exactly that, and this package installs it, so in most
+// projects the setting that actually routes development mail to MailHog is the
+// option filter in features/runtime/dev-mail.php. Both are kept: this covers a
+// site running without Post SMTP.
 
 class WP_MAILHOG {
 
@@ -18,7 +24,7 @@ class WP_MAILHOG {
    * @return bool
    */
   private function isLocal() {
-    return ('development' === getenv('WP_ENV'));
+    return kp_starter_is_development();
   }
 
   /*

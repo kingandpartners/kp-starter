@@ -259,6 +259,19 @@ class Generator
   }
 
   /**
+   * The Traefik middleware chain for one site's routers, as a Compose
+   * interpolation. TRAEFIK_MIDDLEWARES_<SERVICE> (nuxt_6 reads
+   * TRAEFIK_MIDDLEWARES_NUXT_6) overrides the project-wide TRAEFIK_MIDDLEWARES,
+   * so one site can take a middleware such as BasicAuth without the others.
+   */
+  protected static function traefik_middlewares($service_name)
+  {
+    $variable = 'TRAEFIK_MIDDLEWARES_' . strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '_', $service_name));
+
+    return sprintf('${%s:-${TRAEFIK_MIDDLEWARES:-no-www@file}}', $variable);
+  }
+
+  /**
    * The tuned redis service used by the production compose files
    * (deploy/lite.yml and multisite.generated.yml). Kept in one place so the
    * command/healthcheck/memory limits are not lost when the files are
@@ -363,16 +376,15 @@ class Generator
       $services[] = '    extends:';
       $services[] = '      file: ./docker/services/nuxt.deploy.yml';
       $services[] = '      service: nuxt';
-      if ($site['port'] !== 3000) {
-        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
-      }
       $services[] = '    build:';
       $services[] = '      args:';
       $services[] = sprintf('        CURRENT_SITE: %s', $site['current_site']);
       $services[] = '    environment:';
       $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
       if ($site['port'] !== 3000) {
-        $services[] = sprintf('      HMR_PORT: %d', $site['port']);
+        // The built image runs the Nitro server directly and has no package
+        // manager, so the listening port comes from PORT.
+        $services[] = sprintf('      PORT: %d', $site['port']);
       }
       $services[] = '    ports:';
       $services[] = sprintf('      - %d:%d', $site['port'], $site['port']);
@@ -386,6 +398,13 @@ class Generator
     $services[] = '';
     $services[] = 'networks:';
     $services[] = '  nuxt_ssr:';
+    $services[] = '';
+    // nuxt.deploy.yml declares `build.secrets: [node_auth_token]`, and `extends`
+    // does not merge top-level keys, so this file has to define the secret or the
+    // whole compose project is invalid and no image can be built.
+    $services[] = 'secrets:';
+    $services[] = '  node_auth_token:';
+    $services[] = '    environment: NODE_AUTH_TOKEN';
 
     return implode(PHP_EOL, $services) . PHP_EOL;
   }
@@ -420,11 +439,12 @@ class Generator
       $services[] = '    extends:';
       $services[] = '      file: ./docker-compose.yml';
       $services[] = '      service: nuxt';
-      if ($site['port'] !== 3000) {
-        $services[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
-      }
       $services[] = '    environment:';
       $services[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
+      if ($site['port'] !== 3000) {
+        // See render_aws_compose: no package manager in the deployed image.
+        $services[] = sprintf('      PORT: %d', $site['port']);
+      }
       if ($domain) {
         $services[] = sprintf('      FRONTEND_DOMAIN: %s', $domain);
         $services[] = sprintf('      FRONTEND_URL: https://%s', $domain);
@@ -440,7 +460,7 @@ class Generator
         $services[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
         $services[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
         $services[] = sprintf('      - "traefik.http.routers.%s.service=%s"', $name, $name);
-        $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
+        $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=%s"', $name, self::traefik_middlewares($name));
         $services[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=%d"', $name, $site['port']);
       }
       $services[] = '';
@@ -465,32 +485,23 @@ class Generator
 
     // Public sitemap/XML requests must reach WordPress even though the frontend
     // domains route directly to the Nuxt services. Route *.xml/*.xsl on those
-    // domains to WordPress at a higher priority than the plain Host routers.
-    $public_domains = [];
+    // domains to WordPress at a higher priority than the plain Host routers,
+    // one router per site so each takes that site's middleware chain.
     foreach ($manifest['sites'] as $site) {
       $public_domain = $site['beta_domain'] ?: $site['prod_domain'];
-      if ($public_domain) {
-        $public_domains[] = $public_domain;
+      if (!$public_domain) {
+        continue;
       }
-    }
-    $public_domains = array_values(array_unique($public_domains));
-
-    if ($public_domains) {
-      $host_rule = implode(' || ', array_map(
-        fn($domain) => sprintf('Host(`%s`)', $domain),
-        $public_domains
-      ));
-      if (count($public_domains) > 1) {
-        $host_rule = '(' . $host_rule . ')';
-      }
+      $router = 'wordpress-public-xml-' . $site['service_name'];
       $services[] = sprintf(
-        '      - "traefik.http.routers.wordpress-public-xml.rule=%s && PathRegexp(`(?i)^/.*[.](xml|xsl)$`)"',
-        $host_rule
+        '      - "traefik.http.routers.%s.rule=Host(`%s`) && PathRegexp(`(?i)^/.*[.](xml|xsl)$`)"',
+        $router,
+        $public_domain
       );
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.entrypoints=websecure"';
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.service=wordpress"';
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"';
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.priority=100"';
+      $services[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $router);
+      $services[] = sprintf('      - "traefik.http.routers.%s.service=wordpress"', $router);
+      $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=%s"', $router, self::traefik_middlewares($site['service_name']));
+      $services[] = sprintf('      - "traefik.http.routers.%s.priority=100"', $router);
     }
 
     $services[] = '';
@@ -607,13 +618,16 @@ class Generator
     $lines[] = sprintf('      service: %s', $service);
     if ($local) {
       $lines[] = sprintf('    command: sh -c "docker/scripts/healthcheck && corepack yarn dev --port %d"', $site['port']);
-    } elseif ($site['port'] !== 3000) {
-      $lines[] = sprintf('    command: sh -c "corepack yarn start --port %d"', $site['port']);
     }
     $lines[] = '    ports:';
     $lines[] = sprintf('      - %d:%d', $site['port'], $site['port']);
     $lines[] = '    environment:';
     $lines[] = sprintf('      CURRENT_SITE: %s', $site['current_site']);
+    if (!$local) {
+      // The deployed image runs the Nitro build directly and has no package
+      // manager, so the listening port comes from PORT rather than a command.
+      $lines[] = sprintf('      PORT: %d', $site['port']);
+    }
     $wp_env = getenv('WP_ENV') ?: 'production';
     $domain = $local
       ? $site['local_domain']
@@ -633,9 +647,9 @@ class Generator
       $lines[] = '      - "traefik.enable=true"';
       $lines[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
       $lines[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
-      $lines[] = sprintf('      - "traefik.http.routers.%s.service=wordpress"', $name);
-      $lines[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
-      $lines[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=80"', $name);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.service=%s"', $name, $name);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.middlewares=%s"', $name, self::traefik_middlewares($name));
+      $lines[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=%d"', $name, $site['port']);
     }
     $lines[] = '    networks:';
     if ($local) {
@@ -683,6 +697,11 @@ class Generator
     $lines[] = '  Protocols h2 http/1.1';
     $lines[] = '  RewriteEngine on';
     $lines[] = '  ProxyPreserveHost On';
+    // Nuxt's dev server imports virtual modules by ids containing an encoded
+    // slash (`@id/virtual:nuxt:.nuxt-<site>%2Fnuxt.config.mjs`). Apache's
+    // default (Off) 404s those before proxying, so pages never hydrate. Vhosts
+    // don't inherit this from the server config, so it has to be set here.
+    $lines[] = '  AllowEncodedSlashes NoDecode';
     $lines[] = '  SSLProxyEngine on';
     $lines[] = '  SSLProxyVerify none';
     $lines[] = '  SSLProxyCheckPeerCN off';
