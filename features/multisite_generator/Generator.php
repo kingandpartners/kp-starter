@@ -259,6 +259,19 @@ class Generator
   }
 
   /**
+   * The Traefik middleware chain for one site's routers, as a Compose
+   * interpolation. TRAEFIK_MIDDLEWARES_<SERVICE> (nuxt_6 reads
+   * TRAEFIK_MIDDLEWARES_NUXT_6) overrides the project-wide TRAEFIK_MIDDLEWARES,
+   * so one site can take a middleware such as BasicAuth without the others.
+   */
+  protected static function traefik_middlewares($service_name)
+  {
+    $variable = 'TRAEFIK_MIDDLEWARES_' . strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '_', $service_name));
+
+    return sprintf('${%s:-${TRAEFIK_MIDDLEWARES:-no-www@file}}', $variable);
+  }
+
+  /**
    * The tuned redis service used by the production compose files
    * (deploy/lite.yml and multisite.generated.yml). Kept in one place so the
    * command/healthcheck/memory limits are not lost when the files are
@@ -447,7 +460,7 @@ class Generator
         $services[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
         $services[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
         $services[] = sprintf('      - "traefik.http.routers.%s.service=%s"', $name, $name);
-        $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
+        $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=%s"', $name, self::traefik_middlewares($name));
         $services[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=%d"', $name, $site['port']);
       }
       $services[] = '';
@@ -472,32 +485,23 @@ class Generator
 
     // Public sitemap/XML requests must reach WordPress even though the frontend
     // domains route directly to the Nuxt services. Route *.xml/*.xsl on those
-    // domains to WordPress at a higher priority than the plain Host routers.
-    $public_domains = [];
+    // domains to WordPress at a higher priority than the plain Host routers,
+    // one router per site so each takes that site's middleware chain.
     foreach ($manifest['sites'] as $site) {
       $public_domain = $site['beta_domain'] ?: $site['prod_domain'];
-      if ($public_domain) {
-        $public_domains[] = $public_domain;
+      if (!$public_domain) {
+        continue;
       }
-    }
-    $public_domains = array_values(array_unique($public_domains));
-
-    if ($public_domains) {
-      $host_rule = implode(' || ', array_map(
-        fn($domain) => sprintf('Host(`%s`)', $domain),
-        $public_domains
-      ));
-      if (count($public_domains) > 1) {
-        $host_rule = '(' . $host_rule . ')';
-      }
+      $router = 'wordpress-public-xml-' . $site['service_name'];
       $services[] = sprintf(
-        '      - "traefik.http.routers.wordpress-public-xml.rule=%s && PathRegexp(`(?i)^/.*[.](xml|xsl)$`)"',
-        $host_rule
+        '      - "traefik.http.routers.%s.rule=Host(`%s`) && PathRegexp(`(?i)^/.*[.](xml|xsl)$`)"',
+        $router,
+        $public_domain
       );
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.entrypoints=websecure"';
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.service=wordpress"';
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"';
-      $services[] = '      - "traefik.http.routers.wordpress-public-xml.priority=100"';
+      $services[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $router);
+      $services[] = sprintf('      - "traefik.http.routers.%s.service=wordpress"', $router);
+      $services[] = sprintf('      - "traefik.http.routers.%s.middlewares=%s"', $router, self::traefik_middlewares($site['service_name']));
+      $services[] = sprintf('      - "traefik.http.routers.%s.priority=100"', $router);
     }
 
     $services[] = '';
@@ -644,7 +648,7 @@ class Generator
       $lines[] = sprintf('      - "traefik.http.routers.%s.rule=Host(`%s`)"', $name, $domain);
       $lines[] = sprintf('      - "traefik.http.routers.%s.entrypoints=websecure"', $name);
       $lines[] = sprintf('      - "traefik.http.routers.%s.service=%s"', $name, $name);
-      $lines[] = sprintf('      - "traefik.http.routers.%s.middlewares=${TRAEFIK_MIDDLEWARES:-no-www@file}"', $name);
+      $lines[] = sprintf('      - "traefik.http.routers.%s.middlewares=%s"', $name, self::traefik_middlewares($name));
       $lines[] = sprintf('      - "traefik.http.services.%s.loadbalancer.server.port=%d"', $name, $site['port']);
     }
     $lines[] = '    networks:';
