@@ -1,0 +1,5 @@
+{
+  "globalOptions": [
+    { "label": "Robots Txt", "name": "robots_txt", "type": "textarea", "rows": 20 }
+  ]
+}

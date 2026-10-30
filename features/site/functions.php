@@ -47,7 +47,12 @@ if (is_multisite()) {
       );
     }
 
-    switch_theme('kp-nuxt');
+    // Headless consumers may not ship the legacy kp-nuxt WordPress theme.
+    // Only activate it when it is actually available in the installation.
+    $legacy_theme = wp_get_theme('kp-nuxt');
+    if ($legacy_theme->exists()) {
+      switch_theme('kp-nuxt');
+    }
 
     update_option('show_on_front', 'page');
     update_option('page_on_front', 2);

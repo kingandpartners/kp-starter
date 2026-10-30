@@ -43,7 +43,7 @@ class ApiController {
       'permission_callback' => '__return_true'
     ));
 
-    register_rest_route($namespace, '/posts/(?P<locale>[a-zA-Z0-9-]+)/(?P<type>[a-zA-Z0-9-_]+)(?:/(?P<ids>\S+))?', array(
+    register_rest_route($namespace, '/posts/(?P<locale>[a-zA-Z0-9-]+)/(?P<type>[a-zA-Z0-9-_,]+)(?:/(?P<ids>\S+))?', array(
       'methods'  => 'GET',
       'callback' => array($this, 'get_posts_by_params'),
       'permission_callback' => '__return_true'
@@ -321,11 +321,12 @@ class ApiController {
   }
 
   public function retrieve_posts_by_params($request) {
-    $ids  = $request['ids'];
-    $args = array(
+    $ids   = $request['ids'];
+    $types = array_values(array_filter(array_map('trim', explode(',', (string) $request['type']))));
+    $args  = array(
       'posts_per_page' => -1,
       'post_status'    => 'publish',
-      'post_type'      => $request['type'],
+      'post_type'      => count($types) > 1 ? $types : $request['type'],
       'meta_query' => array(
         array(
           'key'   => '_locale',
@@ -337,7 +338,25 @@ class ApiController {
       $args['post__in'] = explode(',', $ids);
       $args['orderby']  = 'post__in';
     }
-    return array_map('\ElasticPress\Serializers\post_data', get_posts($args));
+
+    $posts = get_posts($args);
+
+    // A single type answers with a flat list, as it always has. Several answer
+    // with a map keyed by type, so one request can replace several -- each of
+    // which otherwise costs a full WordPress bootstrap, which is the expensive
+    // part of these endpoints rather than the query.
+    if (count($types) < 2) {
+      return array_map('\ElasticPress\Serializers\post_data', $posts);
+    }
+
+    $grouped = array_fill_keys($types, array());
+
+    foreach ($posts as $post) {
+      if (!isset($grouped[$post->post_type])) continue;
+      $grouped[$post->post_type][] = \ElasticPress\Serializers\post_data($post);
+    }
+
+    return $grouped;
   }
 
   public function get_post_by_url($url) {
