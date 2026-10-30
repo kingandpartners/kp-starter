@@ -18,6 +18,11 @@ function wp_insert_post($id, $obj, $update) {
   // Skip if this update is to an ignored post type
   if (in_array($obj->post_type, ignored_post_types())) return;
 
+  // Skip auto-drafts: WordPress creates these placeholders when an editor opens
+  // the dashboard (Quick Draft) or an "Add New" screen, so they aren't content
+  // changes and shouldn't bust the cache on a page view.
+  if ('auto-draft' === $obj->post_status) return;
+
   if (in_array($obj->post_type, ['revision', 'page'])) {
     bump_page_cache_version($id, $obj, $update);
   } else {
