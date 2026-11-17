@@ -54,6 +54,7 @@
     "wpackagist-plugin/contact-form-7": "^6.0",
     "wpackagist-plugin/duplicate-page": "^4.5.5",
     "wpackagist-plugin/enable-media-replace": "^4.1.6",
+    "wpackagist-plugin/errorgap": "^0.7.2",
     "wpackagist-plugin/flamingo": "^2.6",
     "wpackagist-plugin/post-smtp": "^3.1.4",
     "wpackagist-plugin/wordpress-importer": "^0.9",
