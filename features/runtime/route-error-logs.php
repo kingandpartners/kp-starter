@@ -58,9 +58,9 @@ $previous_handler = set_error_handler(
         }
 
         if ($errno !== E_DEPRECATED && $errno !== E_USER_DEPRECATED) {
-            // Hand back to whoever was handling errors before us — an Airbrake
-            // notifier registered in phpbrake-init.php, say — or to PHP itself,
-            // which logs to WP_DEBUG_LOG.
+            // Hand back to whoever was handling errors before us — the Errorgap
+            // plugin's notifier, say — or to PHP itself, which logs to
+            // WP_DEBUG_LOG.
             return $previous_handler
                 ? call_user_func($previous_handler, $errno, $errstr, $errfile, $errline)
                 : false;
