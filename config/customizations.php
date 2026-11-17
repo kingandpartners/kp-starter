@@ -71,6 +71,20 @@ if (env('MULTISITE')) {
 }
 
 /**
+ * Errorgap error reporting and sign-in events. The plugin turns itself on once
+ * the endpoint and slug are defined, so they're only defined where the deploy
+ * supplied a key (ERRORGAP_API_KEY, a per-environment GitHub secret); the
+ * endpoint and slug come from the project's .env.shared.
+ */
+if (env('ERRORGAP_API_KEY')) {
+  Config::define('ERRORGAP_ENDPOINT', env('ERRORGAP_ENDPOINT'));
+  Config::define('ERRORGAP_PROJECT_SLUG', env('ERRORGAP_PROJECT_SLUG'));
+  Config::define('ERRORGAP_API_KEY', env('ERRORGAP_API_KEY'));
+  Config::define('ERRORGAP_ENVIRONMENT', env('ERRORGAP_ENVIRONMENT') ?: WP_ENV);
+  Config::define('ERRORGAP_AUTH_EVENTS', true);
+}
+
+/**
  * Memory Limit
  */
 Config::define('WP_MEMORY_LIMIT', env('WP_MEMORY_LIMIT') ?? '128M');

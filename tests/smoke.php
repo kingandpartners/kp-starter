@@ -10,7 +10,6 @@ $required_files = [
     'config/application.php',
     'config/customizations.php',
     'features/runtime/bedrock-autoloader.php',
-    'features/runtime/phpbrake-init.php',
     'features/runtime/route-error-logs.php',
     'features/acf-relationship-multisite/acf-relationship-multisite.php',
     'features/acf-relationship-multisite/acf-relationship-multisite-v5.php',
@@ -49,7 +48,6 @@ $bootstrap = file_get_contents($root . '/kp-starter.php');
 
 foreach ([
     "features/runtime/bedrock-autoloader.php",
-    "features/runtime/phpbrake-init.php",
     "features/runtime/route-error-logs.php",
     "features/acf-relationship-multisite/acf-relationship-multisite.php",
 ] as $required_include) {
