@@ -4,9 +4,10 @@
 //
 // On multisite, FRONTEND_URL is one value for the whole network (the main
 // site's front end), so on every other site this would also make links to
-// the main site relative: https://<main site>/ would load as /. There,
-// cms/shared/features/normalize_links (kp_nuxt_normalize_links) normalises
-// each site's links against its own front end instead, so this steps aside.
+// the main site relative: https://<main site>/ would load as /. There, the
+// project's per-site normalize_links filter (e.g. cms/shared/features/
+// normalize_links) normalises each site's links against its own front end
+// instead, so this steps aside.
 function normalize_links_for_elasticpress( $value, $post_id, $field ) {
   if ($value === "") {
     return null;
