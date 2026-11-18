@@ -1,0 +1,15 @@
+{
+  "globalOptions": [
+    { "label": "GTM ID", "name": "gtm_id", "type": "text" },
+    { "label": "GTAG ID", "name": "gtag_id", "type": "text" },
+    {
+      "label": "External Scripts",
+      "name": "external_scripts",
+      "type": "repeater",
+      "layout": "block",
+      "sub_fields": [
+        { "label": "Script Source", "name": "script_source", "type": "text" }
+      ]
+    }
+  ]
+}

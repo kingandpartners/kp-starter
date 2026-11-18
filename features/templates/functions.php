@@ -13,6 +13,11 @@ remove_post_type_support( 'page', 'editor' );
 
 /**
  * Removes default templates and adds custom templates.
+ *
+ * Templates are discovered from the same roots Site::register() loads field
+ * groups from, so a template whose fields live in cms/ (and not in a theme
+ * under src/themes, e.g. one shipped by @kingandpartners/nuxt-theme) is still
+ * offered in the Template dropdown and accepted by wp_update_post().
  */
 add_filter(
   'theme_templates',
@@ -21,9 +26,18 @@ add_filter(
     $theme_dir     = basename(get_template_directory());
     $child_theme   = get_option('options_globalOptionsComponentSite_site');
     if ($child_theme) $theme_dir = "$theme_dir,$child_theme";
-    $templates = glob("$project_root/src/themes/{" . $theme_dir . ",shared}/templates/Template*", GLOB_BRACE);
-    foreach ( $templates as $template) {
-      $template = str_replace('Template', '', $template);
+    $templates = array_merge(
+      glob("$project_root/{cms,src/themes}/{" . $theme_dir . ",shared}/templates/Template*", GLOB_BRACE) ?: [],
+      // This package's own cms/shared tree.
+      glob(dirname(__DIR__, 2) . '/cms/shared/templates/Template*') ?: [],
+      // Sibling mu-plugin packages that ship a cms/shared tree.
+      glob(dirname(__DIR__, 3) . '/*/cms/shared/templates/Template*') ?: [],
+    );
+    // Templates may be directories (TemplateSplash/) or files
+    // (TemplateLegal.vue); either way only the name matters.
+    $names = array_map(fn($path) => preg_replace('/\..*$/', '', basename($path)), $templates);
+    foreach ( array_unique($names) as $template) {
+      $template = preg_replace('/^Template/', '', $template);
       preg_match_all('/((?:^|[A-Z])[a-z]+)/', $template, $words);
       $value = implode(' ', $words[0]);
       $name  = str_replace(' ', '-', strtolower($value));
